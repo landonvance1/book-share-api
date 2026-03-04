@@ -9,18 +9,18 @@ namespace BookSharingWebAPI.Services;
 
 public class BookCoverAnalysisService : IBookCoverAnalysisService
 {
-    private readonly IImageAnalysisService _imageAnalysisService;
+    private readonly ICoverDetectionService _coverDetectionService;
     private readonly IBookLookupService _bookLookupService;
     private readonly ApplicationDbContext _context;
     private readonly ILogger<BookCoverAnalysisService> _logger;
 
     public BookCoverAnalysisService(
-        IImageAnalysisService imageAnalysisService,
+        ICoverDetectionService coverDetectionService,
         IBookLookupService bookLookupService,
         ApplicationDbContext context,
         ILogger<BookCoverAnalysisService> logger)
     {
-        _imageAnalysisService = imageAnalysisService;
+        _coverDetectionService = coverDetectionService;
         _bookLookupService = bookLookupService;
         _context = context;
         _logger = logger;
@@ -29,20 +29,25 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
     public async Task<CoverAnalysisResponse> AnalyzeCoverAsync(
         Stream imageStream, string contentType, string requestId, CancellationToken cancellationToken = default)
     {
-        var ocrResult = await _imageAnalysisService.AnalyzeCoverImageAsync(imageStream, contentType, cancellationToken);
+        var detectionResult = await _coverDetectionService.AnalyzeCoverImageAsync(imageStream, contentType, cancellationToken);
 
-        if (!ocrResult.IsSuccess)
-        {
-            return FailureResponse(ocrResult.ErrorMessage);
-        }
-
-        var scoredBooks = await SearchForMatchingBooksAsync(ocrResult, requestId);
+        if (!detectionResult.IsSuccess)
+            return FailureResponse(detectionResult.ErrorMessage);
 
         _logger.LogInformation(
-            "Cover analysis completed [RequestId={RequestId}, OcrLinesExtracted={OcrLines}, " +
-            "TotalMatches={TotalMatches}, LocalMatches={LocalMatches}, ExternalMatches={ExternalMatches}]",
-            requestId, ocrResult.RawExtractedText.Count,
-            scoredBooks.Count, scoredBooks.Count(m => m.book.Id > 0), scoredBooks.Count(m => m.book.Id < 0));
+            "Cover detection completed [RequestId={RequestId}, Authors={Authors}, Titles={Titles}]",
+            requestId,
+            string.Join(", ", detectionResult.PotentialAuthors),
+            string.Join(", ", detectionResult.PotentialTitles));
+
+        var scoredBooks = await SearchForMatchingBooksAsync(detectionResult, requestId);
+
+        _logger.LogInformation(
+            "Cover analysis completed [RequestId={RequestId}, TotalMatches={TotalMatches}, LocalMatches={LocalMatches}, ExternalMatches={ExternalMatches}]",
+            requestId,
+            scoredBooks.Count,
+            scoredBooks.Count(m => m.book.Id > 0),
+            scoredBooks.Count(m => m.book.Id < 0));
 
         var exactMatch = scoredBooks.FirstOrDefault(m => m.score >= 1.0).book;
 
@@ -51,63 +56,52 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
             Analysis = new CoverAnalysisSummary
             {
                 IsSuccess = true,
-                ExtractedText = string.Join(" ", ocrResult.FilteredText.Select(w => w.Text))
+                ExtractedText = detectionResult.FullOcrText
             },
             MatchedBooks = scoredBooks.Take(ImageAnalysisConstants.MaxResultsPerResponse).Select(m => m.book).ToList(),
             ExactMatch = exactMatch
         };
     }
 
-    private async Task<List<(Book book, double score)>> SearchForMatchingBooksAsync(CoverAnalysisResult ocrResult, string requestId)
+    private async Task<List<(Book book, double score)>> SearchForMatchingBooksAsync(
+        CoverDetectionResult detectionResult, string requestId)
     {
-        if (ocrResult.FilteredText.Count == 0)
-            return [];
+        var ocrWords = BuildOcrWordSet(detectionResult.PotentialAuthors, detectionResult.PotentialTitles);
 
-        var currentWords = ocrResult.FilteredText.ToList();
-        var scoredBooks = new List<(Book book, double score)>();
-
-        for (int attempt = 0; attempt < ImageAnalysisConstants.MaxLookupRetries && scoredBooks.Count == 0; attempt++)
+        // Author-first: search by each detected author and fuzzy match against detected titles
+        foreach (var author in detectionResult.PotentialAuthors)
         {
-            if (currentWords.Count == 0)
-                break;
+            _logger.LogInformation(
+                "Searching by author [RequestId={RequestId}, Author={Author}]", requestId, author);
 
-            scoredBooks = await SearchAttemptAsync(currentWords, requestId, attempt, ImageAnalysisConstants.MaxLookupRetries);
+            var authorResults = await _bookLookupService.SearchBooksAsync(author: author);
+            var scored = ScoreAndFilterMatches(authorResults, ocrWords);
 
-            if (scoredBooks.Count == 0 && attempt < ImageAnalysisConstants.MaxLookupRetries - 1)
+            if (scored.Count > 0)
             {
-                var sharpenedWords = SharpenSearchWords(currentWords);
-                if (sharpenedWords == currentWords)
-                    break;
-
-                currentWords = sharpenedWords;
-                ocrResult.FilteredText = sharpenedWords;
+                _logger.LogInformation(
+                    "Author search matched [RequestId={RequestId}, Author={Author}, Matches={Count}]",
+                    requestId, author, scored.Count);
+                return await MergeWithLocalBooksAsync(scored, ocrWords);
             }
         }
 
-        return scoredBooks;
-    }
+        // Fallback: search by top-ranked title
+        if (detectionResult.PotentialTitles.Count > 0)
+        {
+            var title = detectionResult.PotentialTitles.First();
 
-    private async Task<List<(Book book, double score)>> SearchAttemptAsync(
-        List<ExtractedWord> currentWords, string requestId, int attempt, int maxRetries)
-    {
-        var searchText = string.Join(" ", currentWords.Select(w => w.Text));
+            _logger.LogInformation(
+                "Falling back to title search [RequestId={RequestId}, Title={Title}]", requestId, title);
 
-        _logger.LogInformation(
-            "Search attempt {Attempt}/{Max} [RequestId={RequestId}, FilteredWords={Words}, TextLength={Length}]",
-            attempt + 1, maxRetries, requestId, currentWords.Count, searchText.Length);
+            var titleResults = await _bookLookupService.SearchBooksByTextAsync(title);
+            var scored = ScoreAndFilterMatches(titleResults, ocrWords);
 
-        var ocrWords = BuildOcrWordSet(currentWords);
-        var externalMatches = await _bookLookupService.SearchBooksByTextAsync(searchText);
-        var scoredExternalMatches = ScoreAndFilterMatches(externalMatches, ocrWords);
+            if (scored.Count > 0)
+                return await MergeWithLocalBooksAsync(scored, ocrWords);
+        }
 
-        _logger.LogInformation(
-            "Search results [RequestId={RequestId}, Attempt={Attempt}, RawResults={Raw}, FilteredResults={Filtered}]",
-            requestId, attempt + 1, externalMatches.Count, scoredExternalMatches.Count);
-
-        if (!scoredExternalMatches.Any())
-            return [];
-
-        return await MergeWithLocalBooksAsync(scoredExternalMatches, ocrWords);
+        return [];
     }
 
     private async Task<List<(Book book, double score)>> MergeWithLocalBooksAsync(
@@ -155,9 +149,11 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
             .ToList();
     }
 
-    private static HashSet<string> BuildOcrWordSet(List<ExtractedWord> words) =>
-        words
-            .Select(w => w.Text.ToLower().Trim(',', '.', '!', '?', ';', ':'))
+    private static HashSet<string> BuildOcrWordSet(List<string> authors, List<string> titles) =>
+        authors
+            .Concat(titles)
+            .SelectMany(text => text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Select(w => w.ToLower().Trim(',', '.', '!', '?', ';', ':'))
             .Where(w => w.Length > 2)
             .ToHashSet();
 
@@ -179,104 +175,36 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
         if (ocrWords.Count == 0)
             return 0;
 
-        var bookWords = title
+        var titleWords = title
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Concat(author.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             .Select(w => w.ToLower().Trim(',', '.', '!', '?', ';', ':'))
             .Where(w => w.Length > 2)
             .ToList();
 
-        if (bookWords.Count == 0)
-            return 0;
-
-        var matchCount = bookWords.Count(w => ocrWords.Contains(w));
-        return (double)matchCount / bookWords.Count;
-    }
-
-    /// <summary>
-    /// Sharpens OCR search words by exploiting the visual hierarchy of book covers.
-    /// Groups words into height tiers, finds the largest proportional gap between tiers,
-    /// and discards everything below the gap — keeping only the most prominent text
-    /// (typically title and author).
-    /// </summary>
-    private List<ExtractedWord> SharpenSearchWords(List<ExtractedWord> searchWords)
-    {
-        if (searchWords.Count < ImageAnalysisConstants.SharpenMinWordsRequired)
-            return searchWords;
-
-        if (searchWords.All(w => w.Height <= 0))
-            return searchWords;
-
-        var tiers = BuildHeightTiers(searchWords);
-
-        if (tiers.Count < ImageAnalysisConstants.SharpenMinTiersRequired)
-            return searchWords;
-
-        var (bestGapIndex, bestGapRatio) = FindLargestHeightGap(tiers);
-
-        if (bestGapRatio < ImageAnalysisConstants.SharpenMinGapThreshold)
-            return searchWords;
-
-        var survivingWords = tiers
-            .Take(bestGapIndex + 1)
-            .SelectMany(t => t.Words)
-            .ToHashSet();
-
-        if (survivingWords.Count < ImageAnalysisConstants.SharpenMinWordsAfterCut)
-            return searchWords;
-
-        return searchWords.Where(w => survivingWords.Contains(w)).ToList();
-    }
-
-    private static (int bestGapIndex, double bestGapRatio) FindLargestHeightGap(List<HeightTier> tiers)
-    {
-        int bestGapIndex = -1;
-        double bestGapRatio = 0;
-
-        for (int i = 0; i < tiers.Count - 1; i++)
-        {
-            var upperHeight = tiers[i].RepresentativeHeight;
-            var lowerHeight = tiers[i + 1].RepresentativeHeight;
-            var gapRatio = (upperHeight - lowerHeight) / upperHeight;
-
-            if (gapRatio > bestGapRatio)
-            {
-                bestGapRatio = gapRatio;
-                bestGapIndex = i;
-            }
-        }
-
-        return (bestGapIndex, bestGapRatio);
-    }
-
-    /// <summary>
-    /// Groups words into tiers of similar visual height. Words are sorted by height
-    /// descending, and a new tier starts when a word's height drops below the tolerance
-    /// threshold relative to the current tier's representative height.
-    /// </summary>
-    private static List<HeightTier> BuildHeightTiers(List<ExtractedWord> words)
-    {
-        var sorted = words
-            .Where(w => w.Height > 0)
-            .OrderByDescending(w => w.Height)
+        var authorWords = author
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => w.ToLower().Trim(',', '.', '!', '?', ';', ':'))
+            .Where(w => w.Length > 2)
             .ToList();
 
-        var tiers = new List<HeightTier>();
-        HeightTier? currentTier = null;
+        var allBookWords = titleWords.Concat(authorWords).ToList();
 
-        foreach (var word in sorted)
+        if (allBookWords.Count == 0)
+            return 0;
+
+        // Full score (title + author words)
+        var fullMatchCount = allBookWords.Count(w => ocrWords.Contains(w));
+        var fullScore = (double)fullMatchCount / allBookWords.Count;
+
+        // Title-only score — rewards cases where OCR detected only the title (no author words)
+        if (titleWords.Count > 0)
         {
-            if (currentTier == null ||
-                word.Height < currentTier.RepresentativeHeight * (1 - ImageAnalysisConstants.SharpenTierGroupingTolerance))
-            {
-                currentTier = new HeightTier { RepresentativeHeight = word.Height };
-                tiers.Add(currentTier);
-            }
-
-            currentTier.Words.Add(word);
+            var titleMatchCount = titleWords.Count(w => ocrWords.Contains(w));
+            var titleScore = (double)titleMatchCount / titleWords.Count;
+            return Math.Max(fullScore, titleScore);
         }
 
-        return tiers;
+        return fullScore;
     }
 
     private static CoverAnalysisResponse FailureResponse(string? errorMessage) => new()
@@ -287,10 +215,4 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
             ErrorMessage = errorMessage
         }
     };
-
-    private class HeightTier
-    {
-        public double RepresentativeHeight { get; init; }
-        public List<ExtractedWord> Words { get; } = new();
-    }
 }

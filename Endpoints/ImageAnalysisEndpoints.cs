@@ -65,7 +65,7 @@ public static class ImageAnalysisEndpoints
         catch (HttpRequestException ex)
         {
             logger.LogError(ex,
-                "Azure Vision API request failed [RequestId={RequestId}, UserId={UserId}, StatusCode={StatusCode}].",
+                "Cover detection service request failed [RequestId={RequestId}, UserId={UserId}, StatusCode={StatusCode}].",
                 requestId, userId, ex.StatusCode);
             return Results.StatusCode(503);
         }
