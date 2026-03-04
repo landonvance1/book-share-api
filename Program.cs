@@ -110,7 +110,12 @@ builder.Services.AddHttpClient<IBookLookupService, OpenLibraryService>(client =>
     client.DefaultRequestHeaders.Add("User-Agent", "Community Bookshare App (landonpvance@gmail.com)");
 });
 
-builder.Services.AddHttpClient<IImageAnalysisService, AzureVisionService>();
+builder.Services.AddHttpClient<ICoverDetectionService, CoverDetectionService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["CoverDetection:BaseUrl"]
+        ?? throw new InvalidOperationException("CoverDetection:BaseUrl is not configured."));
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 builder.Services.AddScoped<IBookCoverAnalysisService, BookCoverAnalysisService>();
 builder.Services.AddScoped<CoverImageValidator>();
 
