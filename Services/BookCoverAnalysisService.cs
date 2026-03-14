@@ -4,6 +4,7 @@ using BookSharingApp.Models;
 using BookSharingApp.Services;
 using BookSharingApp.Common;
 using BookSharingWebAPI.Models;
+using FuzzySharp;
 
 namespace BookSharingWebAPI.Services;
 
@@ -66,46 +67,70 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
     private async Task<List<(Book book, double score)>> SearchForMatchingBooksAsync(
         CoverDetectionResult detectionResult, string requestId)
     {
-        var ocrWords = BuildOcrWordSet(detectionResult.PotentialAuthors, detectionResult.PotentialTitles);
+        var topAuthor = detectionResult.PotentialAuthors.FirstOrDefault();
+        var topTitle = detectionResult.PotentialTitles.FirstOrDefault();
 
-        // Author-first: search by each detected author and fuzzy match against detected titles
-        foreach (var author in detectionResult.PotentialAuthors)
+        List<BookLookupResult>? authorResults = null;
+        List<BookLookupResult>? titleResults = null;
+
+        // Pass 1: author-only structured query, recovers when NLP title is too garbled for a combined hit
+        if (topAuthor != null)
         {
             _logger.LogInformation(
-                "Searching by author [RequestId={RequestId}, Author={Author}]", requestId, author);
+                "Searching by author [RequestId={RequestId}, Author={Author}]", requestId, topAuthor);
 
-            var authorResults = await _bookLookupService.SearchBooksAsync(author: author);
-            var scored = ScoreAndFilterMatches(authorResults, ocrWords);
+            authorResults = await _bookLookupService.SearchBooksAsync(author: topAuthor);
+            var scored = ScoreAndFilterMatches(authorResults, topTitle, topAuthor);
 
             if (scored.Count > 0)
             {
                 _logger.LogInformation(
-                    "Author search matched [RequestId={RequestId}, Author={Author}, Matches={Count}]",
-                    requestId, author, scored.Count);
-                return await MergeWithLocalBooksAsync(scored, ocrWords);
+                    "Author search matched [RequestId={RequestId}, Matches={Count}]",
+                    requestId, scored.Count);
+                return await MergeWithLocalBooksAsync(scored, topTitle, topAuthor);
             }
         }
 
-        // Fallback: search by top-ranked title
-        if (detectionResult.PotentialTitles.Count > 0)
+        // Pass 2: title-only text query — widest fallback, used when no author was detected or author searches failed
+        if (topTitle != null)
         {
-            var title = detectionResult.PotentialTitles.First();
-
             _logger.LogInformation(
-                "Falling back to title search [RequestId={RequestId}, Title={Title}]", requestId, title);
+                "Falling back to title-only text search [RequestId={RequestId}, Title={Title}]", requestId, topTitle);
 
-            var titleResults = await _bookLookupService.SearchBooksByTextAsync(title);
-            var scored = ScoreAndFilterMatches(titleResults, ocrWords);
+            titleResults = await _bookLookupService.SearchBooksByTextAsync(topTitle);
+            var scored = ScoreAndFilterMatches(titleResults, topTitle, topAuthor);
 
             if (scored.Count > 0)
-                return await MergeWithLocalBooksAsync(scored, ocrWords);
+                return await MergeWithLocalBooksAsync(scored, topTitle, topAuthor);
+        }
+
+        // Pass 3: best-guess — no new lookups, pick the single highest-scoring candidate
+        // from prior fetches regardless of threshold
+        var allPriorResults = (authorResults ?? []).Concat(titleResults ?? []).ToList();
+        if (allPriorResults.Count > 0)
+        {
+            _logger.LogInformation(
+                "Falling back to best-guess from prior results [RequestId={RequestId}]", requestId);
+
+            var bestGuess = allPriorResults
+                .Select(r => (result: r, score: CalculateWordMatchScore(r.Title, r.Author, topTitle, topAuthor)))
+                .OrderByDescending(x => x.score)
+                .First();
+
+            if (bestGuess.score > 0)
+            {
+                _logger.LogInformation(
+                    "Best-guess match found [RequestId={RequestId}, Title={Title}, Score={Score}]",
+                    requestId, bestGuess.result.Title, bestGuess.score);
+                return await MergeWithLocalBooksAsync([bestGuess.result], topTitle, topAuthor);
+            }
         }
 
         return [];
     }
 
     private async Task<List<(Book book, double score)>> MergeWithLocalBooksAsync(
-        List<BookLookupResult> scoredExternalMatches, HashSet<string> ocrWords)
+        List<BookLookupResult> scoredExternalMatches, string? ocrTitle, string? ocrAuthor)
     {
         var externalTitles = scoredExternalMatches.Select(m => m.Title.ToLower()).ToList();
         var externalAuthors = scoredExternalMatches.Select(m => m.Author.ToLower()).ToList();
@@ -119,7 +144,7 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
 
         foreach (var localBook in localMatches)
         {
-            var score = CalculateWordMatchScore(localBook.Title, localBook.Author, ocrWords);
+            var score = CalculateWordMatchScore(localBook.Title, localBook.Author, ocrTitle, ocrAuthor);
             if (score >= ImageAnalysisConstants.MinWordMatchThreshold)
                 allScoredBooks.Add((localBook, score, true));
         }
@@ -137,7 +162,7 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
                     Author = ext.Author,
                     ExternalThumbnailUrl = ext.ThumbnailUrl
                 };
-                var score = CalculateWordMatchScore(ext.Title, ext.Author, ocrWords);
+                var score = CalculateWordMatchScore(ext.Title, ext.Author, ocrTitle, ocrAuthor);
                 allScoredBooks.Add((externalBook, score, false));
             }
         }
@@ -149,62 +174,76 @@ public class BookCoverAnalysisService : IBookCoverAnalysisService
             .ToList();
     }
 
-    private static HashSet<string> BuildOcrWordSet(List<string> authors, List<string> titles) =>
-        authors
-            .Concat(titles)
-            .SelectMany(text => text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Select(w => w.ToLower().Trim(',', '.', '!', '?', ';', ':'))
-            .Where(w => w.Length > 2)
-            .ToHashSet();
-
     private List<BookLookupResult> ScoreAndFilterMatches(
-        List<BookLookupResult> candidates, HashSet<string> ocrWords) =>
+        List<BookLookupResult> candidates, string? ocrTitle, string? ocrAuthor) =>
         candidates
             .Select(match => new
             {
                 Book = match,
-                Score = CalculateWordMatchScore(match.Title, match.Author, ocrWords)
+                Score = CalculateWordMatchScore(match.Title, match.Author, ocrTitle, ocrAuthor)
             })
             .Where(m => m.Score >= ImageAnalysisConstants.MinWordMatchThreshold)
             .OrderByDescending(m => m.Score)
             .Select(m => m.Book)
             .ToList();
 
-    private static double CalculateWordMatchScore(string title, string author, HashSet<string> ocrWords)
+    private static double CalculateWordMatchScore(
+        string title, string author, string? ocrTitle, string? ocrAuthor)
     {
-        if (ocrWords.Count == 0)
-            return 0;
+        var bookTitleWords = ParseWords(title);
+        var bookAuthorWords = ParseWords(author);
 
-        var titleWords = title
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        var titleScore = ocrTitle != null
+            ? ScoreWordBucket(bookTitleWords, ParseWords(ocrTitle))
+            : (double?)null;
+
+        var authorScore = ocrAuthor != null
+            ? ScoreWordBucket(bookAuthorWords, ParseWords(ocrAuthor))
+            : (double?)null;
+
+        if (titleScore == null && authorScore == null) return 0;
+        if (authorScore == null) return titleScore!.Value;    // title-only OCR: full credit
+        if (titleScore == null) return authorScore.Value / 2; // author-only OCR: half credit
+        return (titleScore.Value + authorScore.Value) / 2;
+    }
+
+    private static double ScoreWordBucket(List<string> bookWords, List<string> ocrWords)
+    {
+        if (bookWords.Count == 0) return 0;
+        var remaining = ocrWords.ToList();
+        return (double)CountAndConsume(bookWords, remaining) / bookWords.Count;
+    }
+
+    private static List<string> ParseWords(string text) =>
+        text.Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Select(w => w.ToLower().Trim(',', '.', '!', '?', ';', ':'))
             .Where(w => w.Length > 2)
             .ToList();
 
-        var authorWords = author
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Select(w => w.ToLower().Trim(',', '.', '!', '?', ';', ':'))
-            .Where(w => w.Length > 2)
-            .ToList();
-
-        var allBookWords = titleWords.Concat(authorWords).ToList();
-
-        if (allBookWords.Count == 0)
-            return 0;
-
-        // Full score (title + author words)
-        var fullMatchCount = allBookWords.Count(w => ocrWords.Contains(w));
-        var fullScore = (double)fullMatchCount / allBookWords.Count;
-
-        // Title-only score — rewards cases where OCR detected only the title (no author words)
-        if (titleWords.Count > 0)
+    private static int CountAndConsume(List<string> bookWords, List<string> remainingOcrWords)
+    {
+        var count = 0;
+        foreach (var bookWord in bookWords)
         {
-            var titleMatchCount = titleWords.Count(w => ocrWords.Contains(w));
-            var titleScore = (double)titleMatchCount / titleWords.Count;
-            return Math.Max(fullScore, titleScore);
+            var idx = FindFuzzyMatchIndex(bookWord, remainingOcrWords);
+            if (idx >= 0)
+            {
+                count++;
+                remainingOcrWords.RemoveAt(idx);
+            }
         }
+        return count;
+    }
 
-        return fullScore;
+    private static int FindFuzzyMatchIndex(string bookWord, List<string> ocrWords)
+    {
+        for (var i = 0; i < ocrWords.Count; i++)
+        {
+            if (ocrWords[i] == bookWord ||
+                Fuzz.Ratio(bookWord, ocrWords[i]) >= ImageAnalysisConstants.FuzzyWordMatchThreshold)
+                return i;
+        }
+        return -1;
     }
 
     private static CoverAnalysisResponse FailureResponse(string? errorMessage) => new()

@@ -75,7 +75,7 @@ namespace BookSharingApp.Services
                     return new List<BookLookupResult>();
 
                 var queryString = string.Join("&", queryParams);
-                var response = await _httpClient.GetAsync($"https://openlibrary.org/search.json?{queryString}&limit={Constants.MaxExternalSearchResults + 1}");
+                var response = await _httpClient.GetAsync($"https://openlibrary.org/search.json?{queryString}&limit={Constants.MaxExternalSearchResults + 1}&fields=title,author_name,cover_i,isbn");
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -120,7 +120,7 @@ namespace BookSharingApp.Services
                 // Use OpenLibrary's general query parameter which searches across all fields
                 var encodedQuery = Uri.EscapeDataString(searchText);
                 var response = await _httpClient.GetAsync(
-                    $"https://openlibrary.org/search.json?q={encodedQuery}&limit={Constants.MaxExternalSearchResults + 1}");
+                    $"https://openlibrary.org/search.json?q={encodedQuery}&limit={Constants.MaxExternalSearchResults + 1}&fields=title,author_name,cover_i,isbn");
 
                 if (!response.IsSuccessStatusCode)
                 {

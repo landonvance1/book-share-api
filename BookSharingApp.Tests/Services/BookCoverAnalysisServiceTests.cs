@@ -109,13 +109,14 @@ namespace BookSharingApp.Tests.Services
             [Fact]
             public async Task AnalyzeCoverAsync_WhenNlpIsMissingBookWords_DoesNotSetExactMatch()
             {
-                // Arrange — NLP has author but title is partial.
-                // Book words: ["Mistborn", "Brandon", "Sanderson"] = 3
-                // OCR word set: ["brandon", "sanderson"] — "mistborn" missing → score < 1.0
+                // Arrange — NLP has author but title is missing.
+                // ocrTitle = null (no titles detected), ocrAuthor = "Brandon Sanderson"
+                // authorScore = 1.0, but author-only OCR gets half credit → combined = 0.5 < 0.8
                 SetupDetectionResult(
                     authors: ["Brandon Sanderson"],
                     titles: []);
 
+                // No titles → title-only pass skipped; author-only structured search runs first
                 BookLookupServiceMock
                     .Setup(s => s.SearchBooksAsync(null, null, "Brandon Sanderson"))
                     .ReturnsAsync([new BookLookupResult
@@ -129,15 +130,16 @@ namespace BookSharingApp.Tests.Services
                 // Act
                 var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
 
-                // Assert
+                // Assert — author-only OCR with no title yields score = 0.5, below 0.8 threshold
+                // so no exact match; Phase 3 best-guess still surfaces the result in MatchedBooks
                 result.ExactMatch.Should().BeNull();
-                result.MatchedBooks.Should().NotBeEmpty();
+                result.MatchedBooks.Should().ContainSingle(b => b.Title == "Mistborn");
             }
 
             [Fact]
             public async Task AnalyzeCoverAsync_WhenNoMatchesFound_DoesNotSetExactMatch()
             {
-                // Arrange — both author search and title fallback return no results
+                // Arrange — both search passes return no results
                 SetupDetectionResult(
                     authors: ["Brandon Sanderson"],
                     titles: ["Mistborn"]);
@@ -208,19 +210,18 @@ namespace BookSharingApp.Tests.Services
                 // Act
                 var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
 
-                // Assert
+                // Assert — "Dune Messiah" scores 0.75 (below 0.8 threshold), only "Dune" passes
                 result.ExactMatch.Should().NotBeNull();
                 result.ExactMatch!.Title.Should().Be("Dune");
-                result.MatchedBooks.Should().HaveCountGreaterThan(1);
             }
         }
 
-        public class AuthorFirstSearchTests : BookCoverAnalysisServiceTestBase
+        public class SearchPassTests : BookCoverAnalysisServiceTestBase
         {
             [Fact]
-            public async Task AnalyzeCoverAsync_WhenAuthorDetected_SearchesByAuthorFirst()
+            public async Task AnalyzeCoverAsync_WhenBothAuthorAndTitleDetected_SearchesByAuthorFirst()
             {
-                // Arrange
+                // Arrange — author structured search returns a match; title-only pass should not be needed
                 SetupDetectionResult(
                     authors: ["Brandon Sanderson"],
                     titles: ["Mistborn"]);
@@ -234,19 +235,18 @@ namespace BookSharingApp.Tests.Services
                 // Act
                 await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
 
-                // Assert — author search was called, title search was NOT
+                // Assert — author search was called; title-only fallback was not needed
                 BookLookupServiceMock.Verify(
                     s => s.SearchBooksAsync(null, null, "Brandon Sanderson"), Times.Once);
                 BookLookupServiceMock.Verify(
-                    s => s.SearchBooksByTextAsync(It.IsAny<string>()), Times.Never);
+                    s => s.SearchBooksByTextAsync("Mistborn"), Times.Never);
             }
 
             [Fact]
             public async Task AnalyzeCoverAsync_WhenAuthorSearchYieldsNoMatches_FallsBackToTitleSearch()
             {
-                // Arrange — author search returns results but none score above threshold.
-                // "Completely Unrelated Book" has 0 word overlap with "Brandon Sanderson" + "Mistborn".
-                // Title-only score for "Completely" = 0/1 = 0, full score = 0/4 = 0 → filtered out.
+                // Arrange — author search returns results that score below threshold;
+                // title search returns the real match
                 SetupDetectionResult(
                     authors: ["Brandon Sanderson"],
                     titles: ["Mistborn"]);
@@ -287,12 +287,70 @@ namespace BookSharingApp.Tests.Services
                 // Act
                 var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
 
-                // Assert — only title search was called
-                BookLookupServiceMock.Verify(
-                    s => s.SearchBooksAsync(null, null, It.IsAny<string>()), Times.Never);
+                // Assert — only title-only query was called (no author search)
                 BookLookupServiceMock.Verify(
                     s => s.SearchBooksByTextAsync("Mistborn"), Times.Once);
+                BookLookupServiceMock.Verify(
+                    s => s.SearchBooksAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
                 result.MatchedBooks.Should().NotBeEmpty();
+            }
+        }
+
+        public class BestGuessTests : BookCoverAnalysisServiceTestBase
+        {
+            [Fact]
+            public async Task AnalyzeCoverAsync_WhenBothPassesBelowThresholdButScoreAboveZero_ReturnsBestGuess()
+            {
+                // Arrange — author search returns a partial match (score below 0.8 threshold),
+                // title search also returns a partial match; Phase 3 should return the highest scorer
+                SetupDetectionResult(
+                    authors: ["Frank Herbert"],
+                    titles: ["Dune"]);
+
+                // Author search: "Dune Messiah" scores below threshold (title doesn't fully match "Dune")
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksAsync(null, null, "Frank Herbert"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Dune Messiah", Author = "Frank Herbert" }]);
+
+                // Title search: also returns something below threshold
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksByTextAsync("Dune"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Dune Messiah", Author = "Frank Herbert" }]);
+
+                using var stream = new MemoryStream();
+
+                // Act
+                var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
+
+                // Assert — Phase 3 best-guess returns the partial match rather than nothing
+                result.MatchedBooks.Should().NotBeEmpty();
+                result.MatchedBooks.Should().Contain(b => b.Title == "Dune Messiah");
+            }
+
+            [Fact]
+            public async Task AnalyzeCoverAsync_WhenBothPassesBelowThresholdAndScoreIsZero_ReturnsEmpty()
+            {
+                // Arrange — OCR words have no fuzzy similarity to the returned books at all
+                SetupDetectionResult(
+                    authors: ["Qxzbvw"],
+                    titles: ["Zyxwvut"]);
+
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksAsync(null, null, "Qxzbvw"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Dune", Author = "Frank Herbert" }]);
+
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksByTextAsync("Zyxwvut"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Dune", Author = "Frank Herbert" }]);
+
+                using var stream = new MemoryStream();
+
+                // Act
+                var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
+
+                // Assert — score is 0, Phase 3 does not return a false positive
+                result.ExactMatch.Should().BeNull();
+                result.MatchedBooks.Should().BeEmpty();
             }
         }
 
@@ -313,6 +371,127 @@ namespace BookSharingApp.Tests.Services
                 result.Analysis.IsSuccess.Should().BeFalse();
                 result.ExactMatch.Should().BeNull();
                 result.MatchedBooks.Should().BeEmpty();
+            }
+        }
+
+        public class FuzzyMatchTests : BookCoverAnalysisServiceTestBase
+        {
+            [Fact]
+            public async Task AnalyzeCoverAsync_WhenOcrHasSingleCharTypoInTitle_StillSetsExactMatch()
+            {
+                // Arrange — OCR returns "Mistbom" (missing 'r') instead of "Mistborn"
+                SetupDetectionResult(
+                    authors: ["Brandon Sanderson"],
+                    titles: ["Mistbom"]);
+
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksAsync(null, null, "Brandon Sanderson"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Mistborn", Author = "Brandon Sanderson" }]);
+
+                using var stream = new MemoryStream();
+
+                // Act
+                var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
+
+                // Assert — fuzzy match tolerates single-char typo, exact match set
+                result.ExactMatch.Should().NotBeNull();
+                result.ExactMatch!.Title.Should().Be("Mistborn");
+            }
+
+            [Fact]
+            public async Task AnalyzeCoverAsync_WhenOcrHasSingleCharTypoInAuthorName_StillReturnsMatchedBook()
+            {
+                // Arrange — OCR returns "Herber" (missing 't') instead of "Herbert"
+                SetupDetectionResult(
+                    authors: ["Frank Herber"],
+                    titles: ["Dune"]);
+
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksAsync(null, null, "Frank Herber"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Dune", Author = "Frank Herbert" }]);
+
+                using var stream = new MemoryStream();
+
+                // Act
+                var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
+
+                // Assert — book returned despite author name typo
+                result.MatchedBooks.Should().NotBeEmpty();
+                result.MatchedBooks.Should().Contain(b => b.Title == "Dune");
+            }
+
+            [Fact]
+            public async Task AnalyzeCoverAsync_WhenOcrTypoIsInLocalBook_StillSetsExactMatchToLocalBook()
+            {
+                // Arrange — local DB book; OCR has "Neuromancr" instead of "Neuromancer"
+                SeedBook(id: 42, title: "Neuromancer", author: "William Gibson");
+
+                SetupDetectionResult(
+                    authors: ["William Gibson"],
+                    titles: ["Neuromancr"]);
+
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksAsync(null, null, "William Gibson"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Neuromancer", Author = "William Gibson" }]);
+
+                using var stream = new MemoryStream();
+
+                // Act
+                var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
+
+                // Assert — local book matched by ID despite title typo in OCR
+                result.ExactMatch.Should().NotBeNull();
+                result.ExactMatch!.Id.Should().Be(42);
+            }
+
+            [Fact]
+            public async Task AnalyzeCoverAsync_WhenOcrWordIsTooDistortedToMatchAnyBookWord_DoesNotMatch()
+            {
+                // Arrange — "Qxzbvw" has no fuzzy similarity to any real word
+                SetupDetectionResult(
+                    authors: ["Qxzbvw"],
+                    titles: ["Zyxwvut"]);
+
+                // Author search returns Dune, but OCR words have no fuzzy
+                // similarity to "dune", "frank", or "herbert" → score = 0, filtered
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksAsync(null, null, "Qxzbvw"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Dune", Author = "Frank Herbert" }]);
+
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksByTextAsync("Zyxwvut"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Dune", Author = "Frank Herbert" }]);
+
+                using var stream = new MemoryStream();
+
+                // Act
+                var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
+
+                // Assert — no false positive from heavily distorted OCR
+                result.ExactMatch.Should().BeNull();
+                result.MatchedBooks.Should().BeEmpty();
+            }
+
+            [Fact]
+            public async Task AnalyzeCoverAsync_WhenOcrHasTyposInBothTitleAndAuthor_StillReturnsMatchedBook()
+            {
+                // Arrange — "Fondation" (missing 'u') and "Issac" (transposed 'a')
+                SetupDetectionResult(
+                    authors: ["Issac Asimov"],
+                    titles: ["Fondation"]);
+
+                BookLookupServiceMock
+                    .Setup(s => s.SearchBooksAsync(null, null, "Issac Asimov"))
+                    .ReturnsAsync([new BookLookupResult { Title = "Foundation", Author = "Isaac Asimov" }]);
+
+                using var stream = new MemoryStream();
+
+                // Act
+                var result = await Service.AnalyzeCoverAsync(stream, "image/jpeg", "test");
+
+                // Assert — book found despite typos in both title and author
+                result.MatchedBooks.Should().NotBeEmpty();
+                result.MatchedBooks.Should().Contain(b => b.Title == "Foundation");
             }
         }
     }
