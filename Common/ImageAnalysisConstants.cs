@@ -20,6 +20,14 @@ namespace BookSharingApp.Common
         public const int MaxResultsPerResponse = 5;
 
         /// <summary>Minimum word match percentage for filtering results (0.0 to 1.0).</summary>
-        public const double MinWordMatchThreshold = 0.5;
+        public const double MinWordMatchThreshold = 0.8;
+
+        /// <summary>
+        /// Minimum fuzzy similarity ratio (0–100) for a book word to count as a match
+        /// against an OCR word. Uses Levenshtein-based Fuzz.Ratio from FuzzySharp.
+        /// A value of 80 tolerates single-character OCR errors in medium-length words
+        /// while rejecting unrelated words.
+        /// </summary>
+        public const int FuzzyWordMatchThreshold = 80;
     }
 }
