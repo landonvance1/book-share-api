@@ -43,10 +43,10 @@ BookSharingWebAPI is the backend for a **community-based book lending platform**
 
 **Test Projects:**
 - `BookSharingApp.Tests/` — Unit tests (fast, free, safe to run anytime)
-- `BookSharingApp.IntegrationTests/` — Integration tests that hit **real external services** (Azure Vision, OpenLibrary)
+- `BookSharingApp.IntegrationTests/` — Integration tests that hit **real external services** (OpenLibrary)
 
 **IMPORTANT — Integration tests are expensive:**
-Do NOT run `BookSharingApp.IntegrationTests` unless changes directly affect the integration-tested code paths (e.g., `AzureVisionService`, `BookCoverAnalysisService`, `OpenLibraryService`, or their models/interfaces). These tests make real API calls that cost money. When in doubt, run only the unit tests.
+Do NOT run `BookSharingApp.IntegrationTests` unless changes directly affect the integration-tested code paths (e.g., `BookCoverAnalysisService`, `OpenLibraryService`, or their models/interfaces). These tests make real API calls that cost money. When in doubt, run only the unit tests.
 
 #### Testing Philosophy
 
@@ -140,11 +140,9 @@ For local PostgreSQL development without Docker, set up user secrets for secure 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=booksharingdb;Username=bookuser;Password=YOUR_LOCAL_PASSWORD"
 dotnet user-secrets set "JWT:Key" "YOUR_JWT_SECRET_KEY"
-dotnet user-secrets set "AzureVision:Endpoint" "YOUR_AZURE_VISION_ENDPOINT"
-dotnet user-secrets set "AzureVision:ApiKey" "YOUR_AZURE_VISION_API_KEY"
 ```
 
-Replace `YOUR_LOCAL_PASSWORD` with your local PostgreSQL password, `YOUR_JWT_SECRET_KEY` with a secure 32+ character key for JWT token signing, and the Azure Vision values with your Azure Computer Vision resource endpoint and key. This keeps credentials out of source control while allowing local development.
+Replace `YOUR_LOCAL_PASSWORD` with your local PostgreSQL password and `YOUR_JWT_SECRET_KEY` with a secure 32+ character key for JWT token signing. This keeps credentials out of source control while allowing local development.
 
 **Prerequisites for local development:**
 1. Install PostgreSQL locally
