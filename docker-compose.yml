@@ -22,8 +22,6 @@ services:
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - JWT_KEY=${JWT_KEY}
-      - AzureVision__Endpoint=${AZURE_VISION_ENDPOINT}
-      - AzureVision__ApiKey=${AZURE_VISION_API_KEY}
       - CoverDetection__BaseUrl=http://cover-detection:8000
     volumes:
       # Mount static files for development
@@ -49,8 +47,6 @@ services:
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - JWT_KEY=${JWT_KEY}
-      - AzureVision__Endpoint=${AZURE_VISION_ENDPOINT}
-      - AzureVision__ApiKey=${AZURE_VISION_API_KEY}
       - CoverDetection__BaseUrl=http://cover-detection:8000
     volumes:
       - ./wwwroot:/app/wwwroot
