@@ -24,11 +24,15 @@ services:
       - JWT_KEY=${JWT_KEY}
       - AzureVision__Endpoint=${AZURE_VISION_ENDPOINT}
       - AzureVision__ApiKey=${AZURE_VISION_API_KEY}
+      - CoverDetection__BaseUrl=http://cover-detection:8000
     volumes:
       # Mount static files for development
       - ./wwwroot:/app/wwwroot
     depends_on:
       - postgres
+    networks:
+      - default
+      - booksharing
     profiles:
       - prod
     restart: unless-stopped
@@ -47,13 +51,21 @@ services:
       - JWT_KEY=${JWT_KEY}
       - AzureVision__Endpoint=${AZURE_VISION_ENDPOINT}
       - AzureVision__ApiKey=${AZURE_VISION_API_KEY}
+      - CoverDetection__BaseUrl=http://cover-detection:8000
     volumes:
       - ./wwwroot:/app/wwwroot
     depends_on:
       - postgres
+    networks:
+      - default
+      - booksharing
     profiles:
       - dev
     restart: unless-stopped
 
 volumes:
   postgres_data:
+
+networks:
+  booksharing:
+    external: true
