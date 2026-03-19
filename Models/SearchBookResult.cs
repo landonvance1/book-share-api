@@ -19,6 +19,9 @@ namespace BookSharingApp.Models
         [Column("owner_user_id")]
         public string OwnerUserId { get; set; } = string.Empty;
 
+        [Column("owner_first_name")]
+        public string OwnerFirstName { get; set; } = string.Empty;
+
         [Column("status")]
         public int Status { get; set; }
 
@@ -26,6 +29,24 @@ namespace BookSharingApp.Models
         public int CommunityId { get; set; }
 
         [Column("community_name")]
+        public string CommunityName { get; set; } = string.Empty;
+    }
+
+    public class GroupedSearchBookResult
+    {
+        public int BookId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Author { get; set; } = string.Empty;
+        public List<BookOwnerInfo> Owners { get; set; } = new();
+    }
+
+    public class BookOwnerInfo
+    {
+        public int UserBookId { get; set; }
+        public string OwnerUserId { get; set; } = string.Empty;
+        public string OwnerFirstName { get; set; } = string.Empty;
+        public int Status { get; set; }
+        public int CommunityId { get; set; }
         public string CommunityName { get; set; } = string.Empty;
     }
 }

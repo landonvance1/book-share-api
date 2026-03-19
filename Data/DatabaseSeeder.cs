@@ -217,6 +217,7 @@ namespace BookSharingApp.Data
 
                 // John's books (user-002)
                 new UserBook { UserId = "user-002", BookId = 1, Status = UserBookStatus.Available }, // The Great Gatsby - SHARED
+                new UserBook { UserId = "user-002", BookId = 10, Status = UserBookStatus.Available }, // Last Argument of Kings - SHARED
                 new UserBook { UserId = "user-002", BookId = 9, Status = UserBookStatus.Available }, // Before They Are Hanged
                 new UserBook { UserId = "user-002", BookId = 16, Status = UserBookStatus.Available }, // Assassin's Apprentice
                 new UserBook { UserId = "user-002", BookId = 20, Status = UserBookStatus.Available }, // Jonathan Strange & Mr Norrell

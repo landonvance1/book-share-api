@@ -29,14 +29,33 @@ namespace BookSharingApp.Services
                 .ToListAsync();
         }
 
-        public async Task<List<SearchBookResult>> SearchAccessibleBooksAsync(string userId, string? search)
+        public async Task<List<GroupedSearchBookResult>> SearchAccessibleBooksAsync(string userId, string? search)
         {
-            return await _context.Database
+            var rawResults = await _context.Database
                 .SqlQueryRaw<SearchBookResult>(
                     "SELECT * FROM search_accessible_books({0}, {1})",
                     userId,
                     search ?? string.Empty)
                 .ToListAsync();
+
+            return rawResults
+                .GroupBy(r => new { r.BookId, r.Title, r.Author })
+                .Select(g => new GroupedSearchBookResult
+                {
+                    BookId = g.Key.BookId,
+                    Title = g.Key.Title,
+                    Author = g.Key.Author,
+                    Owners = g.Select(r => new BookOwnerInfo
+                    {
+                        UserBookId = r.UserBookId,
+                        OwnerUserId = r.OwnerUserId,
+                        OwnerFirstName = r.OwnerFirstName,
+                        Status = r.Status,
+                        CommunityId = r.CommunityId,
+                        CommunityName = r.CommunityName
+                    }).ToList()
+                })
+                .ToList();
         }
 
         public async Task<UserBook> AddUserBookAsync(int bookId, string userId)
