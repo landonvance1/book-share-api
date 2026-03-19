@@ -44,6 +44,7 @@ namespace BookSharingApp.Migrations
                     author TEXT,
                     user_book_id INTEGER,
                     owner_user_id TEXT,
+                    owner_first_name TEXT,
                     status INTEGER,
                     community_id INTEGER,
                     community_name TEXT
@@ -56,6 +57,7 @@ namespace BookSharingApp.Migrations
                         b.author,
                         ub.user_book_id,
                         ub.user_id as owner_user_id,
+                        u.first_name as owner_first_name,
                         ub.status,
                         c.community_id,
                         c.name as community_name
@@ -64,6 +66,7 @@ namespace BookSharingApp.Migrations
                         AND ub.status != 2
                         AND ub.user_id != p_user_id
                         AND ub.is_deleted = FALSE
+                    INNER JOIN ""AspNetUsers"" u ON u.""Id"" = ub.user_id
                     INNER JOIN community_user cu ON cu.user_id = ub.user_id
                     INNER JOIN community c ON c.community_id = cu.community_id AND c.active = true
                     WHERE c.community_id IN (

@@ -7,7 +7,7 @@ namespace BookSharingApp.Services
     {
         // Reads
         Task<List<UserBook>> GetUserBooksAsync(string userId);
-        Task<List<SearchBookResult>> SearchAccessibleBooksAsync(string userId, string? search);
+        Task<List<GroupedSearchBookResult>> SearchAccessibleBooksAsync(string userId, string? search);
 
         // Writes
         Task<UserBook> AddUserBookAsync(int bookId, string userId);
