@@ -40,14 +40,10 @@ cd book-share-api
 cp .env.example .env
 # Edit .env with your preferred credentials
 
-# Start in production mode (port 3000)
-docker-compose --profile prod up --build
-
-# Or start in development mode (port 3001)
-docker-compose --profile dev up --build
+docker-compose up --build
 ```
 
-The API will be available at `http://localhost:3000` (prod) or `http://localhost:3001` (dev).
+The API will be available at `http://localhost:3001`.
 
 ### Local Development Setup
 

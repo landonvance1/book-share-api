@@ -169,11 +169,10 @@ Replace `YOUR_LOCAL_PASSWORD` with your local PostgreSQL password and `YOUR_JWT_
 
 #### Running the Application
 - `docker build -t booksharing-api .` - Build Docker image
-- `docker run -p 3000:8080 booksharing-api` - Run container on port 3000
-- `docker-compose --profile prod up` - Start with docker-compose (production mode, port 3000)
-- `docker-compose --profile dev up` - Start with docker-compose (development mode, port 3001)
-- `docker-compose down` - Stop and remove containers
+- `docker run -p 3001:8080 booksharing-api` - Run container on port 3001
+- `docker-compose up` - Start with docker-compose (port 3001)
 - `docker-compose up --build` - Rebuild and start containers
+- `docker-compose down` - Stop and remove containers
 
 ## Architecture
 
@@ -366,22 +365,16 @@ The core entity representing a book-sharing relationship between lender and borr
 - HTTP: `http://localhost:5155`
 - HTTPS: `https://localhost:7061`
 
-### Docker Development
+### Docker
 - `http://localhost:3001`
-
-### Docker Production
-- `http://localhost:3000`
 
 **Example API calls:**
 ```bash
 # Local development
 curl http://localhost:5155/books
 
-# Docker development
+# Docker
 curl http://localhost:3001/books
-
-# Docker production
-curl http://localhost:3000/books
 ```
 
 ## Database Seeding
@@ -401,14 +394,13 @@ The backend includes a DatabaseSeeder with test data for development:
 
 ### Container Configuration
 - **Port 8080** - Internal container port (HTTP)
-- **Port 3000** - External mapped port for production
-- **Port 3001** - External mapped port for development mode
+- **Port 3001** - External mapped port
 - Static files (wwwroot) are volume-mounted for easy updates
 
 ### Docker Files
 - **Dockerfile** - Multi-stage build configuration using .NET 8 SDK and runtime
 - **.dockerignore** - Excludes build artifacts and unnecessary files from Docker context
-- **docker-compose.yml** - Container orchestration with production and development profiles
+- **docker-compose.yml** - Container orchestration for the API and PostgreSQL
 
 ### Prerequisites
 - Docker Desktop for Windows must be installed to build and run containers

@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -119,6 +121,20 @@ builder.Services.AddHttpClient<ICoverDetectionService, CoverDetectionService>(cl
 builder.Services.AddScoped<IBookCoverAnalysisService, BookCoverAnalysisService>();
 builder.Services.AddScoped<CoverImageValidator>();
 
+// Health checks
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>(name: "postgresql", tags: new[] { "ready" });
+
+// OpenTelemetry metrics
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("book-share-api"))
+    .WithMetrics(m =>
+    {
+        m.AddAspNetCoreInstrumentation()
+         .AddHttpClientInstrumentation()
+         .AddPrometheusExporter();
+    });
+
 var app = builder.Build();
 
 // Apply migrations and seed database
@@ -160,5 +176,12 @@ app.MapNotificationEndpoints();
 
 // Map SignalR hub
 app.MapHub<ChatHub>("/chathub");
+
+// Health checks
+app.MapHealthChecks("/health/live", new() { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new() { Predicate = c => c.Tags.Contains("ready") });
+
+// Prometheus metrics
+app.MapPrometheusScrapingEndpoint("/metrics");
 
 app.Run();
