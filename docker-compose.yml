@@ -11,40 +11,18 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  # Development service with hot reload
   booksharing-api:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
-      - JWT_KEY=${JWT_KEY}
-      - CoverDetection__BaseUrl=http://cover-detection:8000
-    volumes:
-      # Mount static files for development
-      - ./wwwroot:/app/wwwroot
-    depends_on:
-      - postgres
-    networks:
-      - default
-      - booksharing
-    profiles:
-      - prod
-    restart: unless-stopped
-
-  # Development service with hot reload
-  booksharing-api-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
       - "3001:8080"
+    expose:
+      - "8081"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_URLS=http://+:8080;http://+:8081
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
       - JWT_KEY=${JWT_KEY}
       - CoverDetection__BaseUrl=http://cover-detection:8000
@@ -55,8 +33,12 @@ services:
     networks:
       - default
       - booksharing
-    profiles:
-      - dev
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/health/live"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
     restart: unless-stopped
 
 volumes:
