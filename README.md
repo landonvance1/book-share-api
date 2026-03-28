@@ -196,6 +196,25 @@ dotnet test BookSharingApp.Tests/BookSharingApp.Tests.csproj --filter "FullyQual
 
 > **Note:** Integration tests (`BookSharingApp.IntegrationTests/`) hit real external services and cost money. Only run them when changing integration-tested code paths.
 
+### Logging
+
+Logs are emitted as newline-delimited JSON to stdout, structured for ingestion by the Alloy → Loki → Grafana monitoring stack.
+
+Every log entry includes a `RequestId` (from `HttpContext.TraceIdentifier`) that links all service-level log entries for a single request. HTTP method, path, status code, and duration are logged per request via the built-in `HttpLogging` middleware.
+
+Log levels by environment:
+
+| Logger | Development | Production |
+|--------|------------|------------|
+| Default | `Debug` | `Information` |
+| `Microsoft.AspNetCore` | `Information` | `Warning` |
+| `Microsoft.AspNetCore.HttpLogging` | `Information` | `Information` |
+
+Example log entry:
+```json
+{"Timestamp":"2026-03-28T14:22:01.123Z","LogLevel":"Information","Category":"Services.ShareService","Message":"Created share 42 for userbook 7 by borrower user-003","RequestId":"0HN...","State":{"ShareId":42,"UserBookId":7,"BorrowerId":"user-003"}}
+```
+
 ### Swagger
 
 Swagger UI is available in development mode at `/swagger`.

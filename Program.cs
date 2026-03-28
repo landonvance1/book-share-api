@@ -18,6 +18,14 @@ using OpenTelemetry.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure JSON console logging
+builder.Logging.AddJsonConsole(options =>
+{
+    options.JsonWriterOptions = new System.Text.Json.JsonWriterOptions { Indented = false };
+    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+    options.UseUtcTimestamp = true;
+});
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -121,6 +129,15 @@ builder.Services.AddHttpClient<ICoverDetectionService, CoverDetectionService>(cl
 builder.Services.AddScoped<IBookCoverAnalysisService, BookCoverAnalysisService>();
 builder.Services.AddScoped<CoverImageValidator>();
 
+// HTTP request/response logging
+builder.Services.AddHttpLogging(logging =>
+{
+    logging.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestMethod
+        | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestPath
+        | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.ResponseStatusCode
+        | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.Duration;
+});
+
 // Health checks
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>(name: "postgresql", tags: new[] { "ready" });
@@ -152,6 +169,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Attach TraceIdentifier as a logging scope for all requests
+app.Use(async (context, next) =>
+{
+    using (app.Logger.BeginScope(new Dictionary<string, object>
+    {
+        ["RequestId"] = context.TraceIdentifier
+    }))
+    {
+        await next();
+    }
+});
+
+app.UseHttpLogging();
 
 app.UseHttpsRedirection();
 
