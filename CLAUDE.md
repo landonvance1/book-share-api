@@ -203,6 +203,7 @@ BookSharingWebAPI/
 4. **Dependency Injection**: Services, DbContext, and repositories registered in DI container
 5. **Swagger Integration**: Configured for development environment with OpenAPI documentation
 6. **SignalR Hub**: Real-time WebSocket communication for chat functionality
+7. **Structured JSON Logging**: All logs emitted as newline-delimited JSON via the built-in `AddJsonConsole` formatter (no extra dependencies). Every entry carries a `RequestId` scope (from `HttpContext.TraceIdentifier`) that correlates all service-level logs for a single request. HTTP method, path, status code, and duration are captured per request via `HttpLogging` middleware. All existing log statements already use named placeholders (`{ShareId}`, `{UserId}`, etc.) which appear as queryable fields in the JSON output. Log levels: `Debug` default in development, `Information` in production.
 
 ### Data Flow
 - HTTP requests → Endpoints → Services → DbContext → PostgreSQL
