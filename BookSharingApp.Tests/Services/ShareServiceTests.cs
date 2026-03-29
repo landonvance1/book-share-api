@@ -50,8 +50,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -96,8 +95,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -159,8 +157,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: user.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: user,
+user: user,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -172,46 +169,6 @@ namespace BookSharingApp.Tests.Services
                 // Assert
                 await act.Should().ThrowAsync<InvalidOperationException>()
                     .WithMessage("Cannot borrow your own book");
-            }
-
-            [Fact]
-            public async Task CreateShareAsync_WhenBookNotAvailable_ThrowsInvalidOperationException()
-            {
-                // Arrange
-                using var context = DbContextHelper.CreateInMemoryContext();
-                var shareService = new ShareService(context, LoggerMock.Object, NotificationServiceMock.Object);
-
-                var lender = TestDataBuilder.CreateUser(id: "lender-1");
-                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
-                var book = TestDataBuilder.CreateBook();
-                var community = TestDataBuilder.CreateCommunity();
-
-                context.Users.AddRange(lender, borrower);
-                context.Books.Add(book);
-                context.Communities.Add(community);
-                await context.SaveChangesAsync();
-
-                var userBook = TestDataBuilder.CreateUserBook(
-                    userId: lender.Id,
-                    bookId: book.Id,
-                    status: UserBookStatus.Unavailable,  // Book is NOT available
-                    user: lender,
-                    book: book
-                );
-                context.UserBooks.Add(userBook);
-
-                context.CommunityUsers.AddRange(
-                    TestDataBuilder.CreateCommunityUser(community.Id, lender.Id),
-                    TestDataBuilder.CreateCommunityUser(community.Id, borrower.Id)
-                );
-                await context.SaveChangesAsync();
-
-                // Act
-                var act = async () => await shareService.CreateShareAsync(userBook.Id, borrower.Id);
-
-                // Assert
-                await act.Should().ThrowAsync<InvalidOperationException>()
-                    .WithMessage("Book is not available for sharing");
             }
 
             [Fact]
@@ -235,8 +192,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -276,8 +232,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -327,8 +282,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -379,8 +333,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -432,8 +385,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -485,8 +437,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -538,8 +489,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -592,8 +542,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -645,8 +594,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -704,8 +652,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -747,8 +694,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -785,8 +731,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    isDeleted: true,
+isDeleted: true,
                     deletedAt: DateTime.UtcNow,
                     user: lender,
                     book: book
@@ -2330,8 +2275,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -2375,8 +2319,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -2439,8 +2382,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -2482,8 +2424,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -2527,8 +2468,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -2570,8 +2510,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);
@@ -2613,8 +2552,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = TestDataBuilder.CreateUserBook(
                     userId: lender.Id,
                     bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: lender,
+user: lender,
                     book: book
                 );
                 context.UserBooks.Add(userBook);

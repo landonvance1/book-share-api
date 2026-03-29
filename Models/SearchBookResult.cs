@@ -22,9 +22,6 @@ namespace BookSharingApp.Models
         [Column("owner_first_name")]
         public string OwnerFirstName { get; set; } = string.Empty;
 
-        [Column("status")]
-        public int Status { get; set; }
-
         [Column("community_id")]
         public int CommunityId { get; set; }
 
@@ -45,7 +42,6 @@ namespace BookSharingApp.Models
         public int UserBookId { get; set; }
         public string OwnerUserId { get; set; } = string.Empty;
         public string OwnerFirstName { get; set; } = string.Empty;
-        public int Status { get; set; }
         public int CommunityId { get; set; }
         public string CommunityName { get; set; } = string.Empty;
     }

@@ -114,7 +114,6 @@ namespace BookSharingApp.Tests.Services
                 result.Should().NotBeNull();
                 result.UserId.Should().Be(user.Id);
                 result.BookId.Should().Be(book.Id);
-                result.Status.Should().Be(UserBookStatus.Available);
                 result.IsDeleted.Should().BeFalse();
             }
 
@@ -187,7 +186,6 @@ namespace BookSharingApp.Tests.Services
                     bookId: book.Id,
                     isDeleted: true,
                     deletedAt: DateTime.UtcNow.AddDays(-1),
-                    status: UserBookStatus.Unavailable,
                     user: user,
                     book: book
                 );
@@ -202,130 +200,6 @@ namespace BookSharingApp.Tests.Services
                 result.Id.Should().Be(deletedUserBook.Id);
                 result.IsDeleted.Should().BeFalse();
                 result.DeletedAt.Should().BeNull();
-                result.Status.Should().Be(UserBookStatus.Available);
-            }
-        }
-
-        public class UpdateUserBookStatusAsyncTests : UserBookServiceTestBase
-        {
-            [Fact]
-            public async Task UpdateUserBookStatusAsync_WithValidRequest_UpdatesStatus()
-            {
-                // Arrange
-                using var context = DbContextHelper.CreateInMemoryContext();
-                var service = new UserBookService(context, ShareServiceMock.Object, LoggerMock.Object);
-
-                var user = TestDataBuilder.CreateUser(id: "user-1");
-                var book = TestDataBuilder.CreateBook();
-
-                context.Users.Add(user);
-                context.Books.Add(book);
-                await context.SaveChangesAsync();
-
-                var userBook = TestDataBuilder.CreateUserBook(
-                    userId: user.Id,
-                    bookId: book.Id,
-                    status: UserBookStatus.Available,
-                    user: user,
-                    book: book
-                );
-                context.UserBooks.Add(userBook);
-                await context.SaveChangesAsync();
-
-                // Act
-                var result = await service.UpdateUserBookStatusAsync(
-                    userBook.Id,
-                    UserBookStatus.Unavailable,
-                    user.Id);
-
-                // Assert
-                result.Status.Should().Be(UserBookStatus.Unavailable);
-            }
-
-            [Fact]
-            public async Task UpdateUserBookStatusAsync_WhenNotOwner_ThrowsUnauthorizedAccessException()
-            {
-                // Arrange
-                using var context = DbContextHelper.CreateInMemoryContext();
-                var service = new UserBookService(context, ShareServiceMock.Object, LoggerMock.Object);
-
-                var owner = TestDataBuilder.CreateUser(id: "owner-1");
-                var otherUser = TestDataBuilder.CreateUser(id: "other-1");
-                var book = TestDataBuilder.CreateBook();
-
-                context.Users.AddRange(owner, otherUser);
-                context.Books.Add(book);
-                await context.SaveChangesAsync();
-
-                var userBook = TestDataBuilder.CreateUserBook(
-                    userId: owner.Id,
-                    bookId: book.Id,
-                    user: owner,
-                    book: book
-                );
-                context.UserBooks.Add(userBook);
-                await context.SaveChangesAsync();
-
-                // Act
-                var act = async () => await service.UpdateUserBookStatusAsync(
-                    userBook.Id,
-                    UserBookStatus.Unavailable,
-                    otherUser.Id);
-
-                // Assert
-                await act.Should().ThrowAsync<UnauthorizedAccessException>()
-                    .WithMessage("You do not own this book");
-            }
-
-            [Fact]
-            public async Task UpdateUserBookStatusAsync_WhenDeleted_ThrowsInvalidOperationException()
-            {
-                // Arrange
-                using var context = DbContextHelper.CreateInMemoryContext();
-                var service = new UserBookService(context, ShareServiceMock.Object, LoggerMock.Object);
-
-                var user = TestDataBuilder.CreateUser(id: "user-1");
-                var book = TestDataBuilder.CreateBook();
-
-                context.Users.Add(user);
-                context.Books.Add(book);
-                await context.SaveChangesAsync();
-
-                var userBook = TestDataBuilder.CreateUserBook(
-                    userId: user.Id,
-                    bookId: book.Id,
-                    isDeleted: true,
-                    deletedAt: DateTime.UtcNow,
-                    user: user,
-                    book: book
-                );
-                context.UserBooks.Add(userBook);
-                await context.SaveChangesAsync();
-
-                // Act
-                var act = async () => await service.UpdateUserBookStatusAsync(
-                    userBook.Id,
-                    UserBookStatus.Unavailable,
-                    user.Id);
-
-                // Assert
-                await act.Should().ThrowAsync<InvalidOperationException>()
-                    .WithMessage("Cannot update status of a deleted book");
-            }
-
-            [Fact]
-            public async Task UpdateUserBookStatusAsync_WhenNotFound_ThrowsInvalidOperationException()
-            {
-                // Arrange
-                using var context = DbContextHelper.CreateInMemoryContext();
-                var service = new UserBookService(context, ShareServiceMock.Object, LoggerMock.Object);
-
-                // Act
-                var act = async () => await service.UpdateUserBookStatusAsync(999, UserBookStatus.Available, "user-1");
-
-                // Assert
-                await act.Should().ThrowAsync<InvalidOperationException>()
-                    .WithMessage("UserBook not found");
             }
         }
 

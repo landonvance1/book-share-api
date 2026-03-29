@@ -90,7 +90,6 @@ namespace BookSharingApp.Data
                 entity.Property(e => e.Id).HasColumnName("user_book_id").ValueGeneratedOnAdd();
                 entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired();
                 entity.Property(e => e.BookId).HasColumnName("book_id").IsRequired();
-                entity.Property(e => e.Status).HasColumnName("status").IsRequired();
                 entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
                 entity.HasOne(e => e.Book).WithMany().HasForeignKey(e => e.BookId);
             });
