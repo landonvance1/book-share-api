@@ -1,4 +1,3 @@
-using BookSharingApp.Common;
 using BookSharingApp.Models;
 
 namespace BookSharingApp.Services
@@ -11,7 +10,6 @@ namespace BookSharingApp.Services
 
         // Writes
         Task<UserBook> AddUserBookAsync(int bookId, string userId);
-        Task<UserBook> UpdateUserBookStatusAsync(int userBookId, UserBookStatus newStatus, string userId);
 
         /// <summary>
         /// Soft deletes a UserBook from a user's library.

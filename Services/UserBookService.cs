@@ -50,7 +50,6 @@ namespace BookSharingApp.Services
                         UserBookId = r.UserBookId,
                         OwnerUserId = r.OwnerUserId,
                         OwnerFirstName = r.OwnerFirstName,
-                        Status = r.Status,
                         CommunityId = r.CommunityId,
                         CommunityName = r.CommunityName
                     }).ToList()
@@ -76,7 +75,6 @@ namespace BookSharingApp.Services
                     // Re-activate the soft-deleted book
                     existingUserBook.IsDeleted = false;
                     existingUserBook.DeletedAt = null;
-                    existingUserBook.Status = UserBookStatus.Available;
                     await _context.SaveChangesAsync();
 
                     _logger.LogInformation("Re-activated soft-deleted UserBook {UserBookId} for user {UserId}",
@@ -90,8 +88,7 @@ namespace BookSharingApp.Services
             var userBook = new UserBook
             {
                 UserId = userId,
-                BookId = bookId,
-                Status = UserBookStatus.Available
+                BookId = bookId
             };
 
             _context.UserBooks.Add(userBook);
@@ -99,31 +96,6 @@ namespace BookSharingApp.Services
 
             _logger.LogInformation("Created UserBook {UserBookId} for user {UserId} with book {BookId}",
                 userBook.Id, userId, bookId);
-
-            return userBook;
-        }
-
-        public async Task<UserBook> UpdateUserBookStatusAsync(int userBookId, UserBookStatus newStatus, string userId)
-        {
-            if (!Enum.IsDefined(typeof(UserBookStatus), newStatus))
-                throw new ArgumentException("Invalid status value");
-
-            var userBook = await _context.UserBooks.FindAsync(userBookId);
-
-            if (userBook is null)
-                throw new InvalidOperationException("UserBook not found");
-
-            if (userBook.UserId != userId)
-                throw new UnauthorizedAccessException("You do not own this book");
-
-            if (userBook.IsDeleted)
-                throw new InvalidOperationException("Cannot update status of a deleted book");
-
-            userBook.Status = newStatus;
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Updated UserBook {UserBookId} status to {Status} by user {UserId}",
-                userBookId, newStatus, userId);
 
             return userBook;
         }

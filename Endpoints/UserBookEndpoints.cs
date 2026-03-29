@@ -1,4 +1,3 @@
-using BookSharingApp.Common;
 using BookSharingApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -17,41 +16,6 @@ namespace BookSharingApp.Endpoints
                 return Results.Ok(books);
             })
             .WithName("GetUserBooks")
-            .WithOpenApi();
-
-            userBooks.MapPut("/{userBookId:int}/status", async (
-                int userBookId,
-                [FromBody] int status,
-                HttpContext httpContext,
-                IUserBookService userBookService) =>
-            {
-                if (!Enum.IsDefined(typeof(UserBookStatus), status))
-                    return Results.BadRequest("Status must be Available (1) or Unavailable (2)");
-
-                var currentUserId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
-
-                try
-                {
-                    var userBook = await userBookService.UpdateUserBookStatusAsync(
-                        userBookId,
-                        (UserBookStatus)status,
-                        currentUserId);
-                    return Results.Ok(userBook);
-                }
-                catch (InvalidOperationException ex) when (ex.Message == "UserBook not found")
-                {
-                    return Results.NotFound();
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    return Results.Forbid();
-                }
-                catch (InvalidOperationException ex)
-                {
-                    return Results.BadRequest(ex.Message);
-                }
-            })
-            .WithName("UpdateUserBookStatus")
             .WithOpenApi();
 
             userBooks.MapPost("/", async (

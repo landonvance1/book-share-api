@@ -96,10 +96,6 @@ namespace BookSharingApp.Services
             if (userBook.UserId == borrowerId)
                 throw new InvalidOperationException("Cannot borrow your own book");
 
-            // Check if userbook is available (owner hasn't marked it unavailable)
-            if (userBook.Status == UserBookStatus.Unavailable)
-                throw new InvalidOperationException("Book is not available for sharing");
-
             // Check if there's an active share for this userbook (book is currently out on loan)
             // Disputed shares don't block new requests
             var activeShare = await _context.Shares

@@ -210,35 +210,35 @@ namespace BookSharingApp.Data
             var userBooks = new List<UserBook>
             {
                 // Landon's books (user-001)
-                new UserBook { UserId = "user-001", BookId = 1, Status = UserBookStatus.Available }, // The Great Gatsby - SHARED
-                new UserBook { UserId = "user-001", BookId = 4, Status = UserBookStatus.Available }, // Wolf Hall
-                new UserBook { UserId = "user-001", BookId = 8, Status = UserBookStatus.Available }, // The Blade Itself - SHARED
-                new UserBook { UserId = "user-001", BookId = 12, Status = UserBookStatus.Available }, // The Left Hand of Darkness - SHARED
+                new UserBook { UserId = "user-001", BookId = 1 }, // The Great Gatsby - SHARED
+                new UserBook { UserId = "user-001", BookId = 4 }, // Wolf Hall
+                new UserBook { UserId = "user-001", BookId = 8 }, // The Blade Itself - SHARED
+                new UserBook { UserId = "user-001", BookId = 12 }, // The Left Hand of Darkness - SHARED
 
                 // John's books (user-002)
-                new UserBook { UserId = "user-002", BookId = 1, Status = UserBookStatus.Available }, // The Great Gatsby - SHARED
-                new UserBook { UserId = "user-002", BookId = 10, Status = UserBookStatus.Available }, // Last Argument of Kings - SHARED
-                new UserBook { UserId = "user-002", BookId = 9, Status = UserBookStatus.Available }, // Before They Are Hanged
-                new UserBook { UserId = "user-002", BookId = 16, Status = UserBookStatus.Available }, // Assassin's Apprentice
-                new UserBook { UserId = "user-002", BookId = 20, Status = UserBookStatus.Available }, // Jonathan Strange & Mr Norrell
+                new UserBook { UserId = "user-002", BookId = 1 }, // The Great Gatsby - SHARED
+                new UserBook { UserId = "user-002", BookId = 10 }, // Last Argument of Kings - SHARED
+                new UserBook { UserId = "user-002", BookId = 9 }, // Before They Are Hanged
+                new UserBook { UserId = "user-002", BookId = 16 }, // Assassin's Apprentice
+                new UserBook { UserId = "user-002", BookId = 20 }, // Jonathan Strange & Mr Norrell
 
                 // Jane's books (user-003)
-                new UserBook { UserId = "user-003", BookId = 3, Status = UserBookStatus.Available }, // 1984
-                new UserBook { UserId = "user-003", BookId = 5, Status = UserBookStatus.Available }, // Bring Up the Bodies
-                new UserBook { UserId = "user-003", BookId = 8, Status = UserBookStatus.Available }, // The Blade Itself - SHARED
-                new UserBook { UserId = "user-003", BookId = 21, Status = UserBookStatus.Unavailable }, // Piranesi
+                new UserBook { UserId = "user-003", BookId = 3 }, // 1984
+                new UserBook { UserId = "user-003", BookId = 5 }, // Bring Up the Bodies
+                new UserBook { UserId = "user-003", BookId = 8 }, // The Blade Itself - SHARED
+                new UserBook { UserId = "user-003", BookId = 21 }, // Piranesi
 
                 // Bob's books (user-004)
-                new UserBook { UserId = "user-004", BookId = 6, Status = UserBookStatus.Available }, // The Mirror & the Light
-                new UserBook { UserId = "user-004", BookId = 10, Status = UserBookStatus.Available }, // Last Argument of Kings
-                new UserBook { UserId = "user-004", BookId = 12, Status = UserBookStatus.Available }, // The Left Hand of Darkness - SHARED
-                new UserBook { UserId = "user-004", BookId = 17, Status = UserBookStatus.Available }, // Royal Assassin
+                new UserBook { UserId = "user-004", BookId = 6 }, // The Mirror & the Light
+                new UserBook { UserId = "user-004", BookId = 10 }, // Last Argument of Kings
+                new UserBook { UserId = "user-004", BookId = 12 }, // The Left Hand of Darkness - SHARED
+                new UserBook { UserId = "user-004", BookId = 17 }, // Royal Assassin
 
                 // Alice's books (user-005)
-                new UserBook { UserId = "user-005", BookId = 7, Status = UserBookStatus.Available }, // A Place of Greater Safety
-                new UserBook { UserId = "user-005", BookId = 11, Status = UserBookStatus.Available }, // Best Served Cold
-                new UserBook { UserId = "user-005", BookId = 12, Status = UserBookStatus.Available }, // The Left Hand of Darkness - SHARED
-                new UserBook { UserId = "user-005", BookId = 22, Status = UserBookStatus.Unavailable }  // The Ladies of Grace Adieu
+                new UserBook { UserId = "user-005", BookId = 7 }, // A Place of Greater Safety
+                new UserBook { UserId = "user-005", BookId = 11 }, // Best Served Cold
+                new UserBook { UserId = "user-005", BookId = 12 }, // The Left Hand of Darkness - SHARED
+                new UserBook { UserId = "user-005", BookId = 22 }  // The Ladies of Grace Adieu
             };
 
             context.UserBooks.AddRange(userBooks);

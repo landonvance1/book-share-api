@@ -51,8 +51,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -105,8 +104,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -170,8 +168,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -229,8 +226,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -291,8 +287,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -354,8 +349,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -429,8 +423,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -484,8 +477,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -541,8 +533,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -600,8 +591,7 @@ namespace BookSharingApp.Tests.Services
                 var userBook = new UserBook
                 {
                     UserId = lender.Id,
-                    BookId = book.Id,
-                    Status = UserBookStatus.Available
+                    BookId = book.Id
                 };
                 context.UserBooks.Add(userBook);
 
@@ -660,7 +650,7 @@ namespace BookSharingApp.Tests.Services
                 context.Books.Add(book);
                 await context.SaveChangesAsync();
 
-                var userBook = new UserBook { UserId = user.Id, BookId = book.Id, Status = UserBookStatus.Available };
+                var userBook = new UserBook { UserId = user.Id, BookId = book.Id, };
                 context.UserBooks.Add(userBook);
                 await context.SaveChangesAsync();
 
@@ -735,7 +725,7 @@ namespace BookSharingApp.Tests.Services
                 context.Books.Add(book);
                 await context.SaveChangesAsync();
 
-                var userBook = new UserBook { UserId = user1.Id, BookId = book.Id, Status = UserBookStatus.Available };
+                var userBook = new UserBook { UserId = user1.Id, BookId = book.Id, };
                 context.UserBooks.Add(userBook);
                 await context.SaveChangesAsync();
 
@@ -803,7 +793,7 @@ namespace BookSharingApp.Tests.Services
                 context.Books.Add(book);
                 await context.SaveChangesAsync();
 
-                var userBook = new UserBook { UserId = user.Id, BookId = book.Id, Status = UserBookStatus.Available };
+                var userBook = new UserBook { UserId = user.Id, BookId = book.Id, };
                 context.UserBooks.Add(userBook);
                 await context.SaveChangesAsync();
 
@@ -850,7 +840,7 @@ namespace BookSharingApp.Tests.Services
                 context.Books.Add(book);
                 await context.SaveChangesAsync();
 
-                var userBook = new UserBook { UserId = user.Id, BookId = book.Id, Status = UserBookStatus.Available };
+                var userBook = new UserBook { UserId = user.Id, BookId = book.Id, };
                 context.UserBooks.Add(userBook);
                 await context.SaveChangesAsync();
 
@@ -927,7 +917,7 @@ namespace BookSharingApp.Tests.Services
                 context.Books.Add(book);
                 await context.SaveChangesAsync();
 
-                var userBook = new UserBook { UserId = user.Id, BookId = book.Id, Status = UserBookStatus.Available };
+                var userBook = new UserBook { UserId = user.Id, BookId = book.Id, };
                 context.UserBooks.Add(userBook);
                 await context.SaveChangesAsync();
 

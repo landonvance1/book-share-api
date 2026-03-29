@@ -1,7 +1,7 @@
+using BookSharingApp.Common;
 using BookSharingApp.Data;
 using BookSharingApp.Models;
 using BookSharingApp.Services;
-using BookSharingApp.Common;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
@@ -48,8 +48,7 @@ namespace BookSharingApp.Endpoints
                     var userBook = new UserBook
                     {
                         UserId = currentUserId,
-                        BookId = book.Id,
-                        Status = UserBookStatus.Available
+                        BookId = book.Id
                     };
 
                     context.UserBooks.Add(userBook);

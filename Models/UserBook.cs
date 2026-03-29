@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using BookSharingApp.Common;
 
 namespace BookSharingApp.Models
 {
@@ -19,10 +18,6 @@ namespace BookSharingApp.Models
         [Required]
         [Column("book_id")]
         public int BookId { get; set; }
-
-        [Required]
-        [Column("status")]
-        public UserBookStatus Status { get; set; }
 
         [Required]
         [Column("is_deleted")]
