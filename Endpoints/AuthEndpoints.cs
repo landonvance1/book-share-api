@@ -2,10 +2,12 @@ using BookSharingApp.Common;
 using BookSharingApp.Data;
 using BookSharingApp.Models;
 using BookSharingApp.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 namespace BookSharingApp.Endpoints
 {
@@ -35,6 +37,24 @@ namespace BookSharingApp.Endpoints
                 .WithMetadata(new RateLimitAttribute(RateLimitNames.AuthRefresh, RateLimitScope.Ip))
                 .Produces<AuthResponseDto>()
                 .ProducesValidationProblem();
+
+            auth.MapDelete("/account", DeleteAccountAsync)
+                .WithName("DeleteAccount")
+                .WithSummary("Permanently delete the authenticated user's account and all associated personal data")
+                .RequireAuthorization()
+                .Produces(StatusCodes.Status204NoContent);
+        }
+
+        private static async Task<IResult> DeleteAccountAsync(
+            HttpContext httpContext,
+            IUserDeletionService userDeletionService)
+        {
+            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            await userDeletionService.DeleteUserAsync(userId);
+            return Results.NoContent();
         }
 
         private static async Task<IResult> RegisterAsync(

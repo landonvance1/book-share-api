@@ -1,5 +1,6 @@
 using BookSharingApp.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace BookSharingApp.Tests.Helpers
 {
@@ -10,6 +11,7 @@ namespace BookSharingApp.Tests.Helpers
             // Use a unique database name for each test to ensure isolation
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options;
 
             var context = new ApplicationDbContext(options);
@@ -24,6 +26,7 @@ namespace BookSharingApp.Tests.Helpers
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(databaseName: databaseName)
+                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options;
 
             var context = new ApplicationDbContext(options);

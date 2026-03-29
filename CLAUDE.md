@@ -218,6 +218,7 @@ BookSharingWebAPI/
 - Authentication via ASP.NET Core Identity with JWT tokens
 - Can join multiple communities
 - Managed by ASP.NET Core Identity tables
+- **Account deletion (tombstone pattern):** `DELETE /auth/account` scrubs all PII in-place rather than deleting the row, preserving FK integrity across shares, chat messages, and notifications. The `aspnetusers` row is kept with name set to "[Deleted User]", email/password nulled, and account permanently locked. Chat message content is replaced with "[deleted]". No schema migration required.
 
 ### Book
 - Basic book information: id, title, author, thumbnailUrl
@@ -299,6 +300,7 @@ The core entity representing a book-sharing relationship between lender and borr
 - `POST /auth/register` - Create account
 - `POST /auth/login` - Authenticate user
 - `POST /auth/refresh` - Refresh access token
+- `DELETE /auth/account` - Permanently delete the authenticated user's account (Apple App Store compliant)
 
 ### Books (`/books`)
 - `GET /books` - List all books
