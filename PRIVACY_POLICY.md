@@ -20,4 +20,4 @@ This retention is limited to data that benefits other parties and contains no pe
 
 ## Contact
 
-For privacy-related inquiries, contact: landonpvance@gmail.com
+For privacy-related inquiries, contact: communitybookshareapp@gmail.com
