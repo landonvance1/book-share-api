@@ -70,18 +70,9 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = false,
         ClockSkew = TimeSpan.Zero
     };
-});
-
-builder.Services.AddAuthorization();
-
-// Configure SignalR with JWT authentication
-builder.Services.AddSignalR();
-
-// Configure JWT for SignalR
-builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
-{
     options.Events = new JwtBearerEvents
     {
+        // Allow SignalR to pass the JWT via query string
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
@@ -91,9 +82,31 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
                 context.Token = accessToken;
             }
             return Task.CompletedTask;
+        },
+        // Reject tokens for deleted/locked-out accounts immediately
+        OnTokenValidated = async context =>
+        {
+            var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userId is null)
+            {
+                context.Fail("Missing user identifier");
+                return;
+            }
+
+            var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
+            var user = await userManager.FindByIdAsync(userId);
+            if (user is null || user.LockoutEnd == DateTimeOffset.MaxValue)
+            {
+                context.Fail("Account has been deleted");
+            }
         }
     };
 });
+
+builder.Services.AddAuthorization();
+
+// Configure SignalR with JWT authentication
+builder.Services.AddSignalR();
 
 // Register custom services
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -101,6 +114,7 @@ builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IShareService, ShareService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IUserBookService, UserBookService>();
+builder.Services.AddScoped<IUserDeletionService, UserDeletionService>();
 builder.Services.AddSingleton<IRateLimitService, RateLimitService>();
 builder.Services.AddSingleton<IRateLimiter>(provider =>
 {
