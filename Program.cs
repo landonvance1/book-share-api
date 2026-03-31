@@ -218,6 +218,7 @@ app.MapUserBookEndpoints();
 app.MapShareEndpoints();
 app.MapChatEndpoints();
 app.MapNotificationEndpoints();
+app.MapLegalEndpoints();
 
 // Map SignalR hub
 app.MapHub<ChatHub>("/chathub");
