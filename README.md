@@ -89,6 +89,7 @@ The API will be available at `http://localhost:3001`.
 | POST | `/auth/register` | Create account |
 | POST | `/auth/login` | Authenticate user |
 | POST | `/auth/refresh` | Refresh access token |
+| DELETE | `/auth/account` | Permanently delete account |
 
 ### Books
 
@@ -159,7 +160,13 @@ Connect to `/chathub?access_token={token}` for real-time chat.
 **Client methods:** `JoinShareChat`, `LeaveShareChat`, `SendMessage`
 **Server events:** `ReceiveMessage`, `JoinedChat`, `LeftChat`, `Error`
 
-> All endpoints except `/auth/*` require a JWT token: `Authorization: Bearer <token>`
+### Legal
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/privacy-policy` | Privacy policy page |
+
+> All endpoints except `/auth/*` and `/privacy-policy` require a JWT token: `Authorization: Bearer <token>`
 
 ## Share Workflow
 
