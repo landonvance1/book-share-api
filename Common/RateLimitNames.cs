@@ -37,5 +37,8 @@ namespace BookSharingApp.Common
 
         /// <summary>Rate limit for book cover image analysis (10 per minute per user).</summary>
         public const string ImageAnalysis = "image-analysis";
+
+        /// <summary>Rate limit for reporting chat messages (10 per minute per user).</summary>
+        public const string ChatReport = "chat-report";
     }
 }

@@ -126,6 +126,7 @@ builder.Services.AddSingleton<IRateLimiter>(provider =>
     rateLimiter.ConfigureLimit(RateLimitNames.AuthRefresh, 30, TimeSpan.FromMinutes(1)); // 30 token refreshes per minute
     rateLimiter.ConfigureLimit(RateLimitNames.ChatSend, 30, TimeSpan.FromMinutes(2)); // 30 messages per 2 minutes
     rateLimiter.ConfigureLimit(RateLimitNames.ImageAnalysis, 10, TimeSpan.FromMinutes(1)); // 10 image analyses per minute
+    rateLimiter.ConfigureLimit(RateLimitNames.ChatReport, 10, TimeSpan.FromMinutes(1)); // 10 reports per minute per user
     return rateLimiter;
 });
 

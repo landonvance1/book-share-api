@@ -1,6 +1,6 @@
+using BookSharingApp.Common;
 using BookSharingApp.Data;
 using BookSharingApp.Models;
-using BookSharingApp.Common;
 using BookSharingApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -124,8 +124,44 @@ namespace BookSharingApp.Endpoints
             .WithName("SendChatMessage")
             .WithOpenApi()
             .WithMetadata(new RateLimitAttribute(RateLimitNames.ChatSend, RateLimitScope.User));
+
+            // POST /shares/{shareId}/chat/messages/{messageId}/report - Report a message
+            chats.MapPost("/messages/{messageId:int}/report", async (int shareId, int messageId,
+                [FromBody] ReportMessageRequest request, HttpContext httpContext, IChatService chatService) =>
+            {
+                var currentUserId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+
+                if (!Enum.IsDefined(request.Category))
+                    return Results.BadRequest("Invalid report category");
+
+                try
+                {
+                    await chatService.ReportMessageAsync(shareId, messageId, currentUserId, request.Category, request.Notes);
+                    return Results.NoContent();
+                }
+                catch (DuplicateReportException ex)
+                {
+                    return Results.Conflict(ex.Message);
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(ex.Message);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.NotFound(ex.Message);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
+                }
+            })
+            .WithName("ReportChatMessage")
+            .WithOpenApi()
+            .WithMetadata(new RateLimitAttribute(RateLimitNames.ChatReport, RateLimitScope.User));
         }
     }
 
     public record SendMessageRequest(string Content);
+    public record ReportMessageRequest(ReportCategory Category, string? Notes);
 }

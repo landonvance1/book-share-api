@@ -707,6 +707,368 @@ namespace BookSharingApp.Tests.Services
             }
         }
 
+        public class ReportMessageAsyncTests : ChatServiceTestBase
+        {
+            [Fact]
+            public async Task ReportMessageAsync_WithValidRequest_SavesReportWithSnapshots()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                var lender = TestDataBuilder.CreateUser(id: "lender-1");
+                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
+                context.Users.AddRange(lender, borrower);
+                await context.SaveChangesAsync();
+
+                var book = TestDataBuilder.CreateBook();
+                context.Books.Add(book);
+                var userBook = new UserBook { UserId = lender.Id, BookId = book.Id };
+                context.UserBooks.Add(userBook);
+                await context.SaveChangesAsync();
+
+                var share = new Share { UserBookId = userBook.Id, Borrower = borrower.Id, Status = ShareStatus.Requested };
+                context.Shares.Add(share);
+                await context.SaveChangesAsync();
+
+                var thread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(thread);
+                await context.SaveChangesAsync();
+
+                context.ShareChatThreads.Add(TestDataBuilder.CreateShareChatThread(thread.Id, share.Id));
+                await context.SaveChangesAsync();
+
+                var message = TestDataBuilder.CreateChatMessage(threadId: thread.Id, senderId: lender.Id, content: "offensive content");
+                context.ChatMessages.Add(message);
+                await context.SaveChangesAsync();
+
+                // Act
+                await chatService.ReportMessageAsync(share.Id, message.Id, borrower.Id, ReportCategory.Harassment, "this is harassment");
+
+                // Assert
+                var report = await context.ChatMessageReports.SingleAsync();
+                report.MessageId.Should().Be(message.Id);
+                report.ReporterId.Should().Be(borrower.Id);
+                report.ReportedUserId.Should().Be(lender.Id);
+                report.ReportedContent.Should().Be("offensive content");
+                report.Category.Should().Be(ReportCategory.Harassment);
+                report.Notes.Should().Be("this is harassment");
+                report.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+            }
+
+            [Fact]
+            public async Task ReportMessageAsync_WithNullNotes_SavesReportWithNullNotes()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                var lender = TestDataBuilder.CreateUser(id: "lender-1");
+                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
+                context.Users.AddRange(lender, borrower);
+                await context.SaveChangesAsync();
+
+                var book = TestDataBuilder.CreateBook();
+                context.Books.Add(book);
+                var userBook = new UserBook { UserId = lender.Id, BookId = book.Id };
+                context.UserBooks.Add(userBook);
+                await context.SaveChangesAsync();
+
+                var share = new Share { UserBookId = userBook.Id, Borrower = borrower.Id, Status = ShareStatus.Requested };
+                context.Shares.Add(share);
+                await context.SaveChangesAsync();
+
+                var thread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(thread);
+                await context.SaveChangesAsync();
+
+                context.ShareChatThreads.Add(TestDataBuilder.CreateShareChatThread(thread.Id, share.Id));
+                await context.SaveChangesAsync();
+
+                var message = TestDataBuilder.CreateChatMessage(threadId: thread.Id, senderId: lender.Id);
+                context.ChatMessages.Add(message);
+                await context.SaveChangesAsync();
+
+                // Act
+                await chatService.ReportMessageAsync(share.Id, message.Id, borrower.Id, ReportCategory.Spam, null);
+
+                // Assert
+                var report = await context.ChatMessageReports.SingleAsync();
+                report.Notes.Should().BeNull();
+            }
+
+            [Fact]
+            public async Task ReportMessageAsync_WhenShareNotFound_ThrowsInvalidOperationException()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                // Act
+                var act = async () => await chatService.ReportMessageAsync(999, 1, "reporter-1", ReportCategory.Spam, null);
+
+                // Assert
+                await act.Should().ThrowAsync<InvalidOperationException>()
+                    .WithMessage("Share not found");
+            }
+
+            [Fact]
+            public async Task ReportMessageAsync_WhenReporterNotPartOfShare_ThrowsUnauthorizedAccessException()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                var lender = TestDataBuilder.CreateUser(id: "lender-1");
+                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
+                var outsider = TestDataBuilder.CreateUser(id: "outsider-1");
+                context.Users.AddRange(lender, borrower, outsider);
+                await context.SaveChangesAsync();
+
+                var book = TestDataBuilder.CreateBook();
+                context.Books.Add(book);
+                var userBook = new UserBook { UserId = lender.Id, BookId = book.Id };
+                context.UserBooks.Add(userBook);
+                await context.SaveChangesAsync();
+
+                var share = new Share { UserBookId = userBook.Id, Borrower = borrower.Id, Status = ShareStatus.Requested };
+                context.Shares.Add(share);
+                await context.SaveChangesAsync();
+
+                var thread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(thread);
+                await context.SaveChangesAsync();
+
+                context.ShareChatThreads.Add(TestDataBuilder.CreateShareChatThread(thread.Id, share.Id));
+                await context.SaveChangesAsync();
+
+                var message = TestDataBuilder.CreateChatMessage(threadId: thread.Id, senderId: lender.Id);
+                context.ChatMessages.Add(message);
+                await context.SaveChangesAsync();
+
+                // Act
+                var act = async () => await chatService.ReportMessageAsync(share.Id, message.Id, outsider.Id, ReportCategory.Spam, null);
+
+                // Assert
+                await act.Should().ThrowAsync<UnauthorizedAccessException>()
+                    .WithMessage("Access denied to this share chat");
+            }
+
+            [Fact]
+            public async Task ReportMessageAsync_WhenMessageNotFound_ThrowsInvalidOperationException()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                var lender = TestDataBuilder.CreateUser(id: "lender-1");
+                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
+                context.Users.AddRange(lender, borrower);
+                await context.SaveChangesAsync();
+
+                var book = TestDataBuilder.CreateBook();
+                context.Books.Add(book);
+                var userBook = new UserBook { UserId = lender.Id, BookId = book.Id };
+                context.UserBooks.Add(userBook);
+                await context.SaveChangesAsync();
+
+                var share = new Share { UserBookId = userBook.Id, Borrower = borrower.Id, Status = ShareStatus.Requested };
+                context.Shares.Add(share);
+                await context.SaveChangesAsync();
+
+                var thread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(thread);
+                await context.SaveChangesAsync();
+
+                context.ShareChatThreads.Add(TestDataBuilder.CreateShareChatThread(thread.Id, share.Id));
+                await context.SaveChangesAsync();
+
+                // Act — message id 999 doesn't exist
+                var act = async () => await chatService.ReportMessageAsync(share.Id, 999, borrower.Id, ReportCategory.Spam, null);
+
+                // Assert
+                await act.Should().ThrowAsync<InvalidOperationException>()
+                    .WithMessage("Message not found");
+            }
+
+            [Fact]
+            public async Task ReportMessageAsync_WhenMessageBelongsToDifferentShare_ThrowsInvalidOperationException()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                var lender = TestDataBuilder.CreateUser(id: "lender-1");
+                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
+                context.Users.AddRange(lender, borrower);
+                await context.SaveChangesAsync();
+
+                var book = TestDataBuilder.CreateBook();
+                context.Books.Add(book);
+                var userBook = new UserBook { UserId = lender.Id, BookId = book.Id };
+                context.UserBooks.Add(userBook);
+                await context.SaveChangesAsync();
+
+                var share = new Share { UserBookId = userBook.Id, Borrower = borrower.Id, Status = ShareStatus.Requested };
+                context.Shares.Add(share);
+                await context.SaveChangesAsync();
+
+                var thread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(thread);
+                await context.SaveChangesAsync();
+
+                context.ShareChatThreads.Add(TestDataBuilder.CreateShareChatThread(thread.Id, share.Id));
+                await context.SaveChangesAsync();
+
+                // Message in a different thread
+                var otherThread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(otherThread);
+                await context.SaveChangesAsync();
+
+                var messageInOtherThread = TestDataBuilder.CreateChatMessage(threadId: otherThread.Id, senderId: lender.Id);
+                context.ChatMessages.Add(messageInOtherThread);
+                await context.SaveChangesAsync();
+
+                // Act
+                var act = async () => await chatService.ReportMessageAsync(share.Id, messageInOtherThread.Id, borrower.Id, ReportCategory.Spam, null);
+
+                // Assert
+                await act.Should().ThrowAsync<InvalidOperationException>()
+                    .WithMessage("Message not found");
+            }
+
+            [Fact]
+            public async Task ReportMessageAsync_WhenReportingOwnMessage_ThrowsArgumentException()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                var lender = TestDataBuilder.CreateUser(id: "lender-1");
+                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
+                context.Users.AddRange(lender, borrower);
+                await context.SaveChangesAsync();
+
+                var book = TestDataBuilder.CreateBook();
+                context.Books.Add(book);
+                var userBook = new UserBook { UserId = lender.Id, BookId = book.Id };
+                context.UserBooks.Add(userBook);
+                await context.SaveChangesAsync();
+
+                var share = new Share { UserBookId = userBook.Id, Borrower = borrower.Id, Status = ShareStatus.Requested };
+                context.Shares.Add(share);
+                await context.SaveChangesAsync();
+
+                var thread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(thread);
+                await context.SaveChangesAsync();
+
+                context.ShareChatThreads.Add(TestDataBuilder.CreateShareChatThread(thread.Id, share.Id));
+                await context.SaveChangesAsync();
+
+                // borrower sent this message
+                var message = TestDataBuilder.CreateChatMessage(threadId: thread.Id, senderId: borrower.Id);
+                context.ChatMessages.Add(message);
+                await context.SaveChangesAsync();
+
+                // Act — borrower tries to report their own message
+                var act = async () => await chatService.ReportMessageAsync(share.Id, message.Id, borrower.Id, ReportCategory.Spam, null);
+
+                // Assert
+                await act.Should().ThrowAsync<ArgumentException>()
+                    .WithMessage("Cannot report your own message");
+            }
+
+            [Fact]
+            public async Task ReportMessageAsync_WhenDuplicateReport_ThrowsDuplicateReportException()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                var lender = TestDataBuilder.CreateUser(id: "lender-1");
+                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
+                context.Users.AddRange(lender, borrower);
+                await context.SaveChangesAsync();
+
+                var book = TestDataBuilder.CreateBook();
+                context.Books.Add(book);
+                var userBook = new UserBook { UserId = lender.Id, BookId = book.Id };
+                context.UserBooks.Add(userBook);
+                await context.SaveChangesAsync();
+
+                var share = new Share { UserBookId = userBook.Id, Borrower = borrower.Id, Status = ShareStatus.Requested };
+                context.Shares.Add(share);
+                await context.SaveChangesAsync();
+
+                var thread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(thread);
+                await context.SaveChangesAsync();
+
+                context.ShareChatThreads.Add(TestDataBuilder.CreateShareChatThread(thread.Id, share.Id));
+                await context.SaveChangesAsync();
+
+                var message = TestDataBuilder.CreateChatMessage(threadId: thread.Id, senderId: lender.Id);
+                context.ChatMessages.Add(message);
+                await context.SaveChangesAsync();
+
+                // First report succeeds
+                await chatService.ReportMessageAsync(share.Id, message.Id, borrower.Id, ReportCategory.Spam, null);
+
+                // Act — second report from the same user on the same message
+                var act = async () => await chatService.ReportMessageAsync(share.Id, message.Id, borrower.Id, ReportCategory.Harassment, null);
+
+                // Assert
+                await act.Should().ThrowAsync<DuplicateReportException>();
+            }
+
+            [Fact]
+            public async Task ReportMessageAsync_SnapshotsContentEvenIfMessageIsLaterDeleted()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var chatService = new ChatService(context, LoggerMock.Object, NotificationServiceMock.Object);
+
+                var lender = TestDataBuilder.CreateUser(id: "lender-1");
+                var borrower = TestDataBuilder.CreateUser(id: "borrower-1");
+                context.Users.AddRange(lender, borrower);
+                await context.SaveChangesAsync();
+
+                var book = TestDataBuilder.CreateBook();
+                context.Books.Add(book);
+                var userBook = new UserBook { UserId = lender.Id, BookId = book.Id };
+                context.UserBooks.Add(userBook);
+                await context.SaveChangesAsync();
+
+                var share = new Share { UserBookId = userBook.Id, Borrower = borrower.Id, Status = ShareStatus.Requested };
+                context.Shares.Add(share);
+                await context.SaveChangesAsync();
+
+                var thread = TestDataBuilder.CreateChatThread();
+                context.ChatThreads.Add(thread);
+                await context.SaveChangesAsync();
+
+                context.ShareChatThreads.Add(TestDataBuilder.CreateShareChatThread(thread.Id, share.Id));
+                await context.SaveChangesAsync();
+
+                var originalContent = "bad content";
+                var message = TestDataBuilder.CreateChatMessage(threadId: thread.Id, senderId: lender.Id, content: originalContent);
+                context.ChatMessages.Add(message);
+                await context.SaveChangesAsync();
+
+                // Act
+                await chatService.ReportMessageAsync(share.Id, message.Id, borrower.Id, ReportCategory.InappropriateContent, null);
+
+                // Simulate account deletion wiping the message content
+                message.Content = "[deleted]";
+                await context.SaveChangesAsync();
+
+                // Assert — snapshot preserved the original content
+                var report = await context.ChatMessageReports.SingleAsync();
+                report.ReportedContent.Should().Be(originalContent);
+            }
+        }
+
         public class GetMessageThreadAsyncTests : ChatServiceTestBase
         {
             [Fact]

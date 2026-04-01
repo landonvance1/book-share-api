@@ -1,3 +1,4 @@
+using BookSharingApp.Common;
 using BookSharingApp.Data;
 using BookSharingApp.Models;
 using Microsoft.EntityFrameworkCore;
@@ -146,6 +147,49 @@ namespace BookSharingApp.Services
                 senderId);
 
             return message;
+        }
+
+        public async Task ReportMessageAsync(int shareId, int messageId, string reporterId, ReportCategory category, string? notes)
+        {
+            var shareExists = await _context.Shares.AnyAsync(s => s.Id == shareId);
+            if (!shareExists)
+                throw new InvalidOperationException("Share not found");
+
+            var chatContext = (await ShareChatContext.CreateForShareAsync(shareId, _context))!;
+
+            if (!await chatContext.CanUserAccessAsync(reporterId, _context))
+                throw new UnauthorizedAccessException("Access denied to this share chat");
+
+            var message = await _context.ChatMessages
+                .FirstOrDefaultAsync(m => m.Id == messageId && m.ThreadId == chatContext.ThreadId);
+
+            if (message == null)
+                throw new InvalidOperationException("Message not found");
+
+            if (message.SenderId == reporterId)
+                throw new ArgumentException("Cannot report your own message");
+
+            var duplicate = await _context.ChatMessageReports
+                .AnyAsync(r => r.MessageId == messageId && r.ReporterId == reporterId);
+
+            if (duplicate)
+                throw new DuplicateReportException();
+
+            var report = new ChatMessageReport
+            {
+                MessageId = messageId,
+                ReporterId = reporterId,
+                ReportedUserId = message.SenderId,
+                Category = category,
+                ReportedContent = message.Content,
+                Notes = notes,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.ChatMessageReports.Add(report);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Message {MessageId} in share {ShareId} reported by user {ReporterId}", messageId, shareId, reporterId);
         }
     }
 }
