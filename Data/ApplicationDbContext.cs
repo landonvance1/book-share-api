@@ -22,6 +22,7 @@ namespace BookSharingApp.Data
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<ShareChatThread> ShareChatThreads { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<ChatMessageReport> ChatMessageReports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -185,6 +186,27 @@ namespace BookSharingApp.Data
 
                 // Index for auto-mark-as-read queries
                 entity.HasIndex(e => new { e.UserId, e.ShareId, e.NotificationType, e.ReadAt }).HasDatabaseName("IX_Notification_UserId_ShareId_Type_ReadAt");
+            });
+
+            modelBuilder.Entity<ChatMessageReport>(entity =>
+            {
+                entity.ToTable("chat_message_report");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("report_id").ValueGeneratedOnAdd();
+                entity.Property(e => e.MessageId).HasColumnName("message_id").IsRequired();
+                entity.Property(e => e.ReporterId).HasColumnName("reporter_id").IsRequired();
+                entity.Property(e => e.ReportedUserId).HasColumnName("reported_user_id").IsRequired();
+                entity.Property(e => e.Category).HasColumnName("category").IsRequired();
+                entity.Property(e => e.ReportedContent).HasColumnName("reported_content").HasMaxLength(2000).IsRequired();
+                entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+                entity.HasOne(e => e.Message).WithMany().HasForeignKey(e => e.MessageId).OnDelete(DeleteBehavior.Restrict);
+                // Restrict prevents cascade-deleting reports when a user tombstones their account
+                entity.HasOne(e => e.Reporter).WithMany().HasForeignKey(e => e.ReporterId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ReportedUser).WithMany().HasForeignKey(e => e.ReportedUserId).OnDelete(DeleteBehavior.Restrict);
+
+                // Prevent duplicate reports from the same user on the same message
+                entity.HasIndex(e => new { e.MessageId, e.ReporterId }).IsUnique().HasDatabaseName("IX_ChatMessageReport_MessageId_ReporterId_Unique");
             });
         }
     }
