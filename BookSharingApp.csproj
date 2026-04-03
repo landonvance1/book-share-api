@@ -31,12 +31,16 @@
   <ItemGroup>
     <Compile Remove="BookSharingApp.Tests/**" />
     <Compile Remove="BookSharingApp.IntegrationTests/**" />
+    <Compile Remove="BookSharingApp.Cli/**" />
     <Content Remove="BookSharingApp.Tests/**" />
     <Content Remove="BookSharingApp.IntegrationTests/**" />
+    <Content Remove="BookSharingApp.Cli/**" />
     <None Remove="BookSharingApp.Tests/**" />
     <None Remove="BookSharingApp.IntegrationTests/**" />
+    <None Remove="BookSharingApp.Cli/**" />
     <EmbeddedResource Remove="BookSharingApp.Tests/**" />
     <EmbeddedResource Remove="BookSharingApp.IntegrationTests/**" />
+    <EmbeddedResource Remove="BookSharingApp.Cli/**" />
   </ItemGroup>
 
 </Project>

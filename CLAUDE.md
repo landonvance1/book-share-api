@@ -179,6 +179,9 @@ Replace `YOUR_LOCAL_PASSWORD` with your local PostgreSQL password and `YOUR_JWT_
 ### Project Structure
 ```
 BookSharingWebAPI/
+├── BookSharingApp.Cli/    # Admin CLI tool (report viewer)
+│   ├── Commands/          # Command implementations
+│   └── Formatting/        # Table output helpers
 ├── BookSharingApp.Tests/  # Unit test project (xUnit)
 │   ├── Helpers/           # Test utilities
 │   ├── Services/          # Service layer tests
@@ -417,6 +420,26 @@ The application uses environment variables for database configuration to keep cr
 - **DB_CONNECTION_STRING** - Full connection string for the application
 
 For local development, copy `.env.example` to `.env` and customize the values as needed.
+
+## Admin CLI Tool
+
+A read-only console application for viewing chat message reports. No new API endpoints — admin access is gated by server/SSH access.
+
+### Running via Docker (interactive)
+```bash
+docker compose exec -it booksharing-api admin
+```
+Then run commands at the `>>` prompt. The CLI picks up `ConnectionStrings__DefaultConnection` from the container automatically.
+
+### Running Locally
+```bash
+dotnet run --project BookSharingApp.Cli -- --connection-string "Host=localhost;Port=5432;Database=booksharingdb;Username=bookuser;Password=YOUR_PASSWORD"
+```
+
+### Commands
+- **`reports list [--user <name>]`** — List all reports (newest first), optionally filtered by reported user name
+- **`reports view <id>`** — Full report detail with share context (book title, lender/borrower, share status)
+- **`reports stats`** — Total count, breakdown by category, top reported users
 
 ## Related Projects
 

@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookSharingApp.Tests", "Boo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookSharingApp.IntegrationTests", "BookSharingApp.IntegrationTests\BookSharingApp.IntegrationTests.csproj", "{8C73E337-057E-4DB9-9D20-9385DC996053}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookSharingApp.Cli", "BookSharingApp.Cli\BookSharingApp.Cli.csproj", "{304DBBE5-4EB1-40E1-8314-6FE63DD578C0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{8C73E337-057E-4DB9-9D20-9385DC996053}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C73E337-057E-4DB9-9D20-9385DC996053}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C73E337-057E-4DB9-9D20-9385DC996053}.Release|Any CPU.Build.0 = Release|Any CPU
+		{304DBBE5-4EB1-40E1-8314-6FE63DD578C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{304DBBE5-4EB1-40E1-8314-6FE63DD578C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{304DBBE5-4EB1-40E1-8314-6FE63DD578C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{304DBBE5-4EB1-40E1-8314-6FE63DD578C0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

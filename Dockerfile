@@ -4,9 +4,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 # Set the working directory
 WORKDIR /src
 
-# Copy the project file and restore dependencies
+# Copy project files and restore dependencies
 COPY BookSharingApp.csproj .
-RUN dotnet restore
+COPY BookSharingApp.Cli/BookSharingApp.Cli.csproj BookSharingApp.Cli/
+RUN dotnet restore BookSharingApp.csproj
+RUN dotnet restore BookSharingApp.Cli/BookSharingApp.Cli.csproj
 
 # Copy the rest of the source code
 COPY . .
@@ -17,6 +19,9 @@ RUN dotnet build BookSharingApp.csproj -c Release -o /app/build
 # Publish the application
 RUN dotnet publish BookSharingApp.csproj -c Release -o /app/publish
 
+# Publish the CLI tool
+RUN dotnet publish BookSharingApp.Cli/BookSharingApp.Cli.csproj -c Release -o /app/cli
+
 # Use the official .NET 8 runtime image for the final stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 
@@ -25,6 +30,11 @@ WORKDIR /app
 
 # Copy the published application from the build stage
 COPY --from=build /app/publish .
+COPY --from=build /app/cli ./cli
+
+# Add CLI shortcut
+RUN printf '#!/bin/sh\nexec dotnet /app/cli/BookSharingApp.Cli.dll "$@"\n' > /usr/local/bin/admin \
+    && chmod +x /usr/local/bin/admin
 
 # Expose port 8080
 EXPOSE 8080

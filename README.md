@@ -248,7 +248,56 @@ BookSharingWebAPI/
 ├── Services/       # Business logic layer
 ├── Validators/     # Business rule validators
 ├── wwwroot/images/ # Book cover thumbnails
+├── BookSharingApp.Cli/       # Admin CLI tool (report viewer)
 └── BookSharingApp.Tests/     # Unit tests (xUnit)
+```
+
+## Admin CLI
+
+A read-only command-line tool for viewing chat message reports. Admin access is gated by server/SSH access — no additional auth or API endpoints required.
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `reports list` | List all reports (newest first) |
+| `reports list --user <name>` | Filter by reported user name |
+| `reports view <id>` | Full report detail with share context |
+| `reports stats` | Total count, breakdown by category, top reported users |
+
+### Usage (Docker)
+
+The CLI is included in the Docker image. Start an interactive session with `docker compose exec`, then run commands at the prompt. The connection string is picked up automatically from the container environment.
+
+```bash
+docker compose exec -it booksharing-api admin
+```
+
+```
+BookSharing Admin CLI
+Type 'help' for available commands, 'exit' to quit.
+
+>> reports list
+>> reports list --user "john"
+>> reports view 42
+>> reports stats
+>> exit
+```
+
+One-shot mode is also supported by passing commands directly:
+
+```bash
+docker compose exec booksharing-api admin reports stats
+```
+
+### Usage (Local)
+
+```bash
+# Interactive mode
+dotnet run --project BookSharingApp.Cli -- --connection-string "Host=localhost;Port=5432;Database=booksharingdb;Username=bookuser;Password=YOUR_PASSWORD"
+
+# One-shot mode
+dotnet run --project BookSharingApp.Cli -- --connection-string "Host=localhost;..." reports list
 ```
 
 ## Environment Variables
