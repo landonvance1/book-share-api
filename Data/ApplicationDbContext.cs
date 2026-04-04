@@ -200,6 +200,8 @@ namespace BookSharingApp.Data
                 entity.Property(e => e.ReportedContent).HasColumnName("reported_content").HasMaxLength(2000).IsRequired();
                 entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(500);
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+                entity.Property(e => e.IsResolved).HasColumnName("is_resolved").IsRequired().HasDefaultValue(false);
+                entity.HasIndex(e => e.IsResolved).HasDatabaseName("IX_ChatMessageReport_IsResolved");
                 entity.HasOne(e => e.Message).WithMany().HasForeignKey(e => e.MessageId).OnDelete(DeleteBehavior.Restrict);
                 // Restrict prevents cascade-deleting reports when a user tombstones their account
                 entity.HasOne(e => e.Reporter).WithMany().HasForeignKey(e => e.ReporterId).OnDelete(DeleteBehavior.Restrict);

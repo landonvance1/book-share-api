@@ -41,6 +41,10 @@ namespace BookSharingApp.Models
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        [Required]
+        [Column("is_resolved")]
+        public bool IsResolved { get; set; } = false;
+
         // Navigation properties
         public ChatMessage Message { get; set; } = null!;
         public User Reporter { get; set; } = null!;

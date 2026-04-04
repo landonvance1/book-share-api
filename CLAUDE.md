@@ -288,6 +288,22 @@ The core entity representing a book-sharing relationship between lender and borr
 - Rate limited: 30 messages per 2 minutes per user
 - Paginated message history (50 per page, max 100)
 
+### ChatMessageReport
+Stores reports submitted by share participants about inappropriate chat messages.
+
+**Key Properties:**
+- `MessageId` — the reported message
+- `ReporterId` / `ReportedUserId` — who filed the report and who was reported
+- `Category` — enum: Spam, Harassment, InappropriateContent, Other
+- `ReportedContent` — snapshot of the message text at report time (max 2000 chars)
+- `Notes` — optional free-text from the reporter (max 500 chars)
+- `CreatedAt` — UTC timestamp
+- `IsResolved` — binary flag (`boolean NOT NULL DEFAULT false`) set by admins once the report has been handled
+
+**Constraints:**
+- Unique index on `(MessageId, ReporterId)` prevents duplicate reports from the same user on the same message
+- Users cannot report their own messages
+
 ### Notification
 - **Types**: ShareStatusChanged, ShareDueDateChanged, ShareMessageReceived
 - Separate read tracking for share vs. chat notifications
@@ -423,7 +439,7 @@ For local development, copy `.env.example` to `.env` and customize the values as
 
 ## Admin CLI Tool
 
-A read-only console application for viewing chat message reports. No new API endpoints — admin access is gated by server/SSH access.
+A console application for viewing and managing chat message reports. No new API endpoints — admin access is gated by server/SSH access.
 
 ### Running via Docker (interactive)
 ```bash
