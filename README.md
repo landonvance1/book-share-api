@@ -254,7 +254,7 @@ BookSharingWebAPI/
 
 ## Admin CLI
 
-A read-only command-line tool for viewing chat message reports. Admin access is gated by server/SSH access — no additional auth or API endpoints required.
+A command-line tool for viewing and managing chat message reports. Admin access is gated by server/SSH access — no additional auth or API endpoints required.
 
 ### Commands
 
