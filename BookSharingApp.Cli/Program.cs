@@ -64,11 +64,12 @@ static async Task<int> RunCommandAsync(ApplicationDbContext db, string[] args)
         {
             case "reports list":
                 var userFilter = GetOptionValue(args, "--user");
-                await ReportCommands.ListAsync(db, userFilter);
+                var showAll = args.Contains("--all");
+                await ReportCommands.ListAsync(db, userFilter, showAll);
                 return 0;
 
-            case "reports view" when GetPositionalArg(args, 2) is { } idStr && int.TryParse(idStr, out var id):
-                await ReportCommands.ViewAsync(db, id);
+            case "reports view" when GetPositionalArg(args, 2) is { } viewIdStr && int.TryParse(viewIdStr, out var viewId):
+                await ReportCommands.ViewAsync(db, viewId);
                 return 0;
 
             case "reports view":
@@ -78,6 +79,22 @@ static async Task<int> RunCommandAsync(ApplicationDbContext db, string[] args)
             case "reports stats":
                 await ReportCommands.StatsAsync(db);
                 return 0;
+
+            case "reports resolve" when GetPositionalArg(args, 2) is { } resolveIdStr && int.TryParse(resolveIdStr, out var resolveId):
+                await ReportCommands.ResolveAsync(db, resolveId, resolved: true);
+                return 0;
+
+            case "reports resolve":
+                Console.Error.WriteLine("Usage: reports resolve <id>");
+                return 1;
+
+            case "reports unresolve" when GetPositionalArg(args, 2) is { } unresolveIdStr && int.TryParse(unresolveIdStr, out var unresolveId):
+                await ReportCommands.ResolveAsync(db, unresolveId, resolved: false);
+                return 0;
+
+            case "reports unresolve":
+                Console.Error.WriteLine("Usage: reports unresolve <id>");
+                return 1;
 
             default:
                 Console.Error.WriteLine($"Unknown command: {baseCommand}");
@@ -95,11 +112,13 @@ static async Task<int> RunCommandAsync(ApplicationDbContext db, string[] args)
 static void PrintHelp()
 {
     Console.WriteLine("Available commands:");
-    Console.WriteLine("  reports list [--user <name>]  List all reports (newest first)");
-    Console.WriteLine("  reports view <id>             View full details of a report");
-    Console.WriteLine("  reports stats                 Show report statistics");
-    Console.WriteLine("  help                          Show this help message");
-    Console.WriteLine("  exit                          Exit the CLI");
+    Console.WriteLine("  reports list [--all] [--user <name>]  List reports (unresolved by default)");
+    Console.WriteLine("  reports view <id>                     View full details of a report");
+    Console.WriteLine("  reports resolve <id>                  Mark a report as resolved");
+    Console.WriteLine("  reports unresolve <id>                Mark a report as unresolved");
+    Console.WriteLine("  reports stats                         Show report statistics");
+    Console.WriteLine("  help                                  Show this help message");
+    Console.WriteLine("  exit                                  Exit the CLI");
 }
 
 static string ResolveConnectionString(string[] args)
