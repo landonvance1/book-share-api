@@ -96,6 +96,27 @@ static async Task<int> RunCommandAsync(ApplicationDbContext db, string[] args)
                 Console.Error.WriteLine("Usage: reports unresolve <id>");
                 return 1;
 
+            case "reports ban" when GetPositionalArg(args, 2) is { } banReportIdStr && int.TryParse(banReportIdStr, out var banReportId):
+                await ReportCommands.BanAsync(db, banReportId);
+                return 0;
+
+            case "reports ban":
+                Console.Error.WriteLine("Usage: reports ban <reportId>");
+                return 1;
+
+            case "users list":
+                var userSearch = GetOptionValue(args, "--search");
+                await UserCommands.ListAsync(db, userSearch);
+                return 0;
+
+            case "users ban" when GetPositionalArg(args, 2) is { } banUserIdStr:
+                await UserCommands.BanAsync(db, banUserIdStr);
+                return 0;
+
+            case "users ban":
+                Console.Error.WriteLine("Usage: users ban <id>");
+                return 1;
+
             default:
                 Console.Error.WriteLine($"Unknown command: {baseCommand}");
                 Console.Error.WriteLine("Type 'help' for available commands.");
@@ -116,7 +137,10 @@ static void PrintHelp()
     Console.WriteLine("  reports view <id>                     View full details of a report");
     Console.WriteLine("  reports resolve <id>                  Mark a report as resolved");
     Console.WriteLine("  reports unresolve <id>                Mark a report as unresolved");
+    Console.WriteLine("  reports ban <reportId>                Ban reported user and resolve report");
     Console.WriteLine("  reports stats                         Show report statistics");
+    Console.WriteLine("  users list [--search <name>]          List users with banned status");
+    Console.WriteLine("  users ban <id>                        Permanently ban a user");
     Console.WriteLine("  help                                  Show this help message");
     Console.WriteLine("  exit                                  Exit the CLI");
 }

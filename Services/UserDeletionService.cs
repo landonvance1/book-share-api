@@ -134,17 +134,7 @@ namespace BookSharingApp.Services
                 _logger.LogDebug("Removed user {UserId} from {Count} communities", userId, communityMemberships.Count);
 
                 // Step 8: Scrub PII from the aspnetusers row in-place (tombstone)
-                user.Email = $"deleted-{userId}@deleted.invalid";
-                user.NormalizedEmail = $"DELETED-{userId.ToUpper()}@DELETED.INVALID";
-                user.UserName = $"deleted-{userId}";
-                user.NormalizedUserName = $"DELETED-{userId.ToUpper()}";
-                user.FirstName = "[Deleted";
-                user.LastName = "User]";
-                user.PhoneNumber = null;
-                user.PasswordHash = null;
-                user.SecurityStamp = Guid.NewGuid().ToString();
-                user.LockoutEnabled = true;
-                user.LockoutEnd = DateTimeOffset.MaxValue;
+                UserPiiScrubber.Scrub(user, "Deleted");
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();

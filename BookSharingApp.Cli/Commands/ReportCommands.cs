@@ -180,6 +180,59 @@ public static class ReportCommands
         }
     }
 
+    public static async Task BanAsync(ApplicationDbContext db, int reportId)
+    {
+        var report = await db.ChatMessageReports
+            .Include(r => r.ReportedUser)
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report is null)
+        {
+            Console.Error.WriteLine($"Report #{reportId} not found.");
+            return;
+        }
+
+        var user = report.ReportedUser;
+        if (user.LockoutEnd == DateTimeOffset.MaxValue)
+        {
+            Console.Error.WriteLine($"Reported user is already banned.");
+            return;
+        }
+
+        var name = FormatName(user.FirstName, user.LastName);
+        var preview = report.ReportedContent.Length > 60
+            ? report.ReportedContent[..60] + "..."
+            : report.ReportedContent;
+
+        Console.WriteLine($"Report:  #{report.Id}");
+        Console.WriteLine($"User:    {name} (id: {user.Id})");
+        Console.WriteLine($"Message: {preview}");
+        Console.Write($"Ban {name} (id: {user.Id})? This is permanent and cannot be undone. [y/N]: ");
+
+        var response = Console.ReadLine();
+        if (response is null || response.Trim().ToLower() != "y")
+        {
+            Console.WriteLine("Aborted.");
+            return;
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        try
+        {
+            await UserCommands.ApplyBanAsync(db, user);
+            report.IsResolved = true;
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        Console.WriteLine($"User '{name}' has been banned and report #{reportId} has been resolved.");
+    }
+
     public static async Task ResolveAsync(ApplicationDbContext db, int reportId, bool resolved)
     {
         var report = await db.ChatMessageReports.FindAsync(reportId);
