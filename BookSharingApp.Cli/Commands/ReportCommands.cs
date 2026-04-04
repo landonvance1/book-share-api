@@ -11,12 +11,15 @@ public static class ReportCommands
     private static string FormatName(string firstName, string lastName)
         => $"{firstName} {lastName}".Trim();
 
-    public static async Task ListAsync(ApplicationDbContext db, string? userFilter)
+    public static async Task ListAsync(ApplicationDbContext db, string? userFilter, bool showAll = false)
     {
         var query = db.ChatMessageReports
             .AsNoTracking()
             .OrderByDescending(r => r.CreatedAt)
             .AsQueryable();
+
+        if (!showAll)
+            query = query.Where(r => !r.IsResolved);
 
         if (!string.IsNullOrWhiteSpace(userFilter))
         {
@@ -32,6 +35,7 @@ public static class ReportCommands
                 r.Id,
                 r.CreatedAt,
                 r.Category,
+                r.IsResolved,
                 ReportedUser = r.ReportedUser.FirstName + " " + r.ReportedUser.LastName,
                 Reporter = r.Reporter.FirstName + " " + r.Reporter.LastName,
                 Preview = r.ReportedContent.Length > 50
@@ -45,12 +49,13 @@ public static class ReportCommands
             return;
         }
 
-        var headers = new[] { "ID", "Created", "Category", "Reported User", "Reporter", "Message Preview" };
+        var headers = new[] { "ID", "Created", "Category", "Resolved", "Reported User", "Reporter", "Message Preview" };
         var rows = reports.Select(r => new[]
         {
             r.Id.ToString(),
             r.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
             r.Category.ToString(),
+            r.IsResolved ? "Yes" : "No",
             r.ReportedUser.Trim(),
             r.Reporter.Trim(),
             r.Preview
@@ -95,6 +100,7 @@ public static class ReportCommands
         Console.WriteLine(new string('─', 40));
         Console.WriteLine($"  Created:        {report.CreatedAt:yyyy-MM-dd HH:mm:ss} UTC");
         Console.WriteLine($"  Category:       {report.Category}");
+        Console.WriteLine($"  Resolved:       {(report.IsResolved ? "Yes" : "No")}");
         Console.WriteLine($"  Reported User:  {FormatName(report.ReportedUser.FirstName, report.ReportedUser.LastName)}");
         Console.WriteLine($"  Reporter:       {FormatName(report.Reporter.FirstName, report.Reporter.LastName)}");
         Console.WriteLine();
@@ -151,9 +157,14 @@ public static class ReportCommands
             .Where(u => userIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => $"{u.FirstName} {u.LastName}".Trim());
 
+        var resolved = await db.ChatMessageReports.AsNoTracking().CountAsync(r => r.IsResolved);
+        var unresolved = total - resolved;
+
         Console.WriteLine("Report Statistics");
         Console.WriteLine(new string('─', 40));
         Console.WriteLine($"  Total Reports: {total}");
+        Console.WriteLine($"  Resolved:      {resolved}");
+        Console.WriteLine($"  Unresolved:    {unresolved}");
         Console.WriteLine();
 
         Console.WriteLine("By Category:");
@@ -167,5 +178,24 @@ public static class ReportCommands
             var name = users.GetValueOrDefault(user.UserId, user.UserId);
             Console.WriteLine($"  {name,-25} {user.Count} report(s)");
         }
+    }
+
+    public static async Task ResolveAsync(ApplicationDbContext db, int reportId, bool resolved)
+    {
+        var report = await db.ChatMessageReports.FindAsync(reportId);
+        if (report is null)
+        {
+            Console.WriteLine($"Report #{reportId} not found.");
+            return;
+        }
+        if (report.IsResolved == resolved)
+        {
+            Console.WriteLine($"Report #{reportId} is already {(resolved ? "resolved" : "unresolved")}.");
+            return;
+        }
+
+        report.IsResolved = resolved;
+        await db.SaveChangesAsync();
+        Console.WriteLine($"Report #{reportId} marked as {(resolved ? "resolved" : "unresolved")}.");
     }
 }
