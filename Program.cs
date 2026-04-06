@@ -15,6 +15,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using System.Diagnostics.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -158,12 +159,15 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>(name: "postgresql", tags: new[] { "ready" });
 
 // OpenTelemetry metrics
+builder.Services.AddSingleton(new Meter("book-share-api"));
+
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(r => r.AddService("book-share-api"))
     .WithMetrics(m =>
     {
         m.AddAspNetCoreInstrumentation()
          .AddHttpClientInstrumentation()
+         .AddMeter("book-share-api")
          .AddPrometheusExporter();
     });
 
@@ -177,6 +181,9 @@ using (var scope = app.Services.CreateScope())
     await context.Database.MigrateAsync();
     await DatabaseSeeder.SeedAsync(context, userManager);
 }
+
+var meter = app.Services.GetRequiredService<Meter>();
+app.RegisterBookShareMetrics(meter);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
