@@ -21,5 +21,11 @@ namespace BookSharingApp.Services
         /// <param name="shareId">The ID of the share.</param>
         /// <param name="userId">The ID of the user whose notifications should be marked as read.</param>
         Task MarkAllShareNotificationsAsReadForUserAsync(int shareId, string userId);
+
+        /// <summary>
+        /// Marks a single notification as read by ID. Returns false if the notification is not found
+        /// or does not belong to the given user.
+        /// </summary>
+        Task<bool> MarkNotificationAsReadAsync(int notificationId, string userId);
     }
 }

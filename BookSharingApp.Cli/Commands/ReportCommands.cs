@@ -193,7 +193,7 @@ public static class ReportCommands
         }
 
         var user = report.ReportedUser;
-        if (user.LockoutEnd == DateTimeOffset.MaxValue)
+        if (UserCommands.IsUserBanned(user))
         {
             Console.Error.WriteLine($"Reported user is already banned.");
             return;
@@ -231,6 +231,55 @@ public static class ReportCommands
         }
 
         Console.WriteLine($"User '{name}' has been banned and report #{reportId} has been resolved.");
+    }
+
+    public static async Task WarnAsync(ApplicationDbContext db, int reportId, string message)
+    {
+        var report = await db.ChatMessageReports
+            .Include(r => r.ReportedUser)
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report is null)
+        {
+            Console.Error.WriteLine($"Report #{reportId} not found.");
+            return;
+        }
+
+        var user = report.ReportedUser;
+        if (UserCommands.IsUserBanned(user))
+        {
+            Console.Error.WriteLine($"Reported user is already banned.");
+            return;
+        }
+
+        var name = FormatName(user.FirstName, user.LastName);
+        var preview = report.ReportedContent.Length > 60
+            ? report.ReportedContent[..60] + "..."
+            : report.ReportedContent;
+
+        Console.WriteLine($"Report:  #{report.Id}");
+        Console.WriteLine($"User:    {name} (id: {user.Id})");
+        Console.WriteLine($"Message: {preview}");
+        Console.WriteLine($"Warning: {message}");
+        Console.Write($"Send warning to {name} and resolve report #{reportId}? [y/N]: ");
+
+        var response = Console.ReadLine();
+        if (response is null || response.Trim().ToLower() != "y")
+        {
+            Console.WriteLine("Aborted.");
+            return;
+        }
+
+        // Determine share context from the report's message thread (null if no share thread)
+        var shareId = await db.ChatMessageReports
+            .Where(r => r.Id == reportId)
+            .Select(r => r.Message.Thread.ShareChatThread != null ? (int?)r.Message.Thread.ShareChatThread.ShareId : null)
+            .FirstOrDefaultAsync();
+
+        await UserCommands.CommitWarnAsync(db, user.Id, message, shareId,
+            extraStaging: () => report.IsResolved = true);
+
+        Console.WriteLine($"Warning sent to '{name}' and report #{reportId} has been resolved.");
     }
 
     public static async Task ResolveAsync(ApplicationDbContext db, int reportId, bool resolved)

@@ -104,6 +104,20 @@ static async Task<int> RunCommandAsync(ApplicationDbContext db, string[] args)
                 Console.Error.WriteLine("Usage: reports ban <reportId>");
                 return 1;
 
+            case "reports warn" when GetPositionalArg(args, 2) is { } warnReportIdStr && int.TryParse(warnReportIdStr, out var warnReportId):
+                var warnReportMessage = GetMessageValue(args);
+                if (string.IsNullOrWhiteSpace(warnReportMessage))
+                {
+                    Console.Error.WriteLine("Usage: reports warn <reportId> --message <message>");
+                    return 1;
+                }
+                await ReportCommands.WarnAsync(db, warnReportId, warnReportMessage);
+                return 0;
+
+            case "reports warn":
+                Console.Error.WriteLine("Usage: reports warn <reportId> --message <message>");
+                return 1;
+
             case "users list":
                 var userSearch = GetOptionValue(args, "--search");
                 await UserCommands.ListAsync(db, userSearch);
@@ -115,6 +129,20 @@ static async Task<int> RunCommandAsync(ApplicationDbContext db, string[] args)
 
             case "users ban":
                 Console.Error.WriteLine("Usage: users ban <id>");
+                return 1;
+
+            case "users warn" when GetPositionalArg(args, 2) is { } warnUserIdStr:
+                var warnUserMessage = GetMessageValue(args);
+                if (string.IsNullOrWhiteSpace(warnUserMessage))
+                {
+                    Console.Error.WriteLine("Usage: users warn <userId> --message <message>");
+                    return 1;
+                }
+                await UserCommands.WarnAsync(db, warnUserIdStr, warnUserMessage);
+                return 0;
+
+            case "users warn":
+                Console.Error.WriteLine("Usage: users warn <id> --message <message>");
                 return 1;
 
             default:
@@ -138,9 +166,11 @@ static void PrintHelp()
     Console.WriteLine("  reports resolve <id>                  Mark a report as resolved");
     Console.WriteLine("  reports unresolve <id>                Mark a report as unresolved");
     Console.WriteLine("  reports ban <reportId>                Ban reported user and resolve report");
+    Console.WriteLine("  reports warn <reportId> --message <> Warn reported user and resolve report");
     Console.WriteLine("  reports stats                         Show report statistics");
     Console.WriteLine("  users list [--search <name>]          List users with banned status");
     Console.WriteLine("  users ban <id>                        Permanently ban a user");
+    Console.WriteLine("  users warn <id> --message <>          Send a warning to a user");
     Console.WriteLine("  help                                  Show this help message");
     Console.WriteLine("  exit                                  Exit the CLI");
 }
@@ -168,6 +198,14 @@ static ApplicationDbContext CreateDbContext(string connectionString)
         .Options;
 
     return new ApplicationDbContext(options);
+}
+
+static string? GetMessageValue(string[] args)
+{
+    var value = GetOptionValue(args, "--message");
+    if (string.IsNullOrWhiteSpace(value))
+        return null;
+    return value.Replace("\\n", "\n");
 }
 
 static string? GetOptionValue(string[] args, string optionName)
