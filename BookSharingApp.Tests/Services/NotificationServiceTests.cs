@@ -2087,5 +2087,100 @@ namespace BookSharingApp.Tests.Services
                 await act.Should().NotThrowAsync();
             }
         }
+
+        public class MarkNotificationAsReadAsyncTests : NotificationServiceTestBase
+        {
+            [Fact]
+            public async Task WithUnreadNotification_SetsReadAt()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var notificationService = new NotificationService(context, LoggerMock.Object);
+
+                var user = TestDataBuilder.CreateUser(id: "user-1");
+                context.Users.Add(user);
+                await context.SaveChangesAsync();
+
+                var notification = TestDataBuilder.CreateNotification(userId: user.Id, readAt: null);
+                context.Notifications.Add(notification);
+                await context.SaveChangesAsync();
+
+                // Act
+                var result = await notificationService.MarkNotificationAsReadAsync(notification.Id, user.Id);
+
+                // Assert
+                result.Should().BeTrue();
+                var updated = await context.Notifications.FindAsync(notification.Id);
+                updated!.ReadAt.Should().NotBeNull();
+            }
+
+            [Fact]
+            public async Task WithAlreadyReadNotification_ReturnsTrueWithoutUpdating()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var notificationService = new NotificationService(context, LoggerMock.Object);
+
+                var user = TestDataBuilder.CreateUser(id: "user-1");
+                context.Users.Add(user);
+                await context.SaveChangesAsync();
+
+                var originalReadAt = DateTime.UtcNow.AddHours(-1);
+                var notification = TestDataBuilder.CreateNotification(userId: user.Id, readAt: originalReadAt);
+                context.Notifications.Add(notification);
+                await context.SaveChangesAsync();
+
+                // Act
+                var result = await notificationService.MarkNotificationAsReadAsync(notification.Id, user.Id);
+
+                // Assert
+                result.Should().BeTrue();
+                var updated = await context.Notifications.FindAsync(notification.Id);
+                updated!.ReadAt.Should().Be(originalReadAt);
+            }
+
+            [Fact]
+            public async Task WithNotificationBelongingToOtherUser_ReturnsFalse()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var notificationService = new NotificationService(context, LoggerMock.Object);
+
+                var owner = TestDataBuilder.CreateUser(id: "owner-1");
+                var otherUser = TestDataBuilder.CreateUser(id: "other-1");
+                context.Users.AddRange(owner, otherUser);
+                await context.SaveChangesAsync();
+
+                var notification = TestDataBuilder.CreateNotification(userId: owner.Id, readAt: null);
+                context.Notifications.Add(notification);
+                await context.SaveChangesAsync();
+
+                // Act
+                var result = await notificationService.MarkNotificationAsReadAsync(notification.Id, otherUser.Id);
+
+                // Assert
+                result.Should().BeFalse();
+                var unchanged = await context.Notifications.FindAsync(notification.Id);
+                unchanged!.ReadAt.Should().BeNull();
+            }
+
+            [Fact]
+            public async Task WithNonExistentNotification_ReturnsFalse()
+            {
+                // Arrange
+                using var context = DbContextHelper.CreateInMemoryContext();
+                var notificationService = new NotificationService(context, LoggerMock.Object);
+
+                var user = TestDataBuilder.CreateUser(id: "user-1");
+                context.Users.Add(user);
+                await context.SaveChangesAsync();
+
+                // Act
+                var result = await notificationService.MarkNotificationAsReadAsync(999, user.Id);
+
+                // Assert
+                result.Should().BeFalse();
+            }
+        }
     }
 }

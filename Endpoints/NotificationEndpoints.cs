@@ -46,6 +46,19 @@ namespace BookSharingApp.Endpoints
             .WithName("GetUnreadNotifications")
             .WithOpenApi();
 
+            // PATCH /notifications/{id}/read - Mark a single notification as read
+            notifications.MapPatch("/{id:int}/read", async (int id,
+                HttpContext httpContext, INotificationService notificationService) =>
+            {
+                var currentUserId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+
+                var found = await notificationService.MarkNotificationAsReadAsync(id, currentUserId);
+
+                return found ? Results.NoContent() : Results.NotFound();
+            })
+            .WithName("MarkNotificationAsRead")
+            .WithOpenApi();
+
             // PATCH /notifications/shares/{shareId}/read - Mark share notifications as read
             notifications.MapPatch("/shares/{shareId:int}/read", async (int shareId,
                 HttpContext httpContext, INotificationService notificationService) =>

@@ -69,6 +69,9 @@ namespace BookSharingApp.Services
 
         public async Task<List<Notification>> GetUnreadNotificationsAsync(string userId)
         {
+            // Note: for AdminWarning notifications CreatedByUser is a self-reference
+            // (CreatedByUserId == UserId). The mobile client should not display the
+            // "created by" field for that notification type.
             return await _context.Notifications
                 .Include(n => n.Share)
                     .ThenInclude(s => s!.UserBook)
@@ -150,6 +153,24 @@ namespace BookSharingApp.Services
                 _logger.LogInformation("Marked {Count} notifications as read for user {UserId} on share {ShareId} during archive",
                     notifications.Count, userId, shareId);
             }
+        }
+
+        public async Task<bool> MarkNotificationAsReadAsync(int notificationId, string userId)
+        {
+            var notification = await _context.Notifications
+                .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
+
+            if (notification is null)
+                return false;
+
+            if (notification.ReadAt is null)
+            {
+                notification.ReadAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Marked notification {NotificationId} as read for user {UserId}", notificationId, userId);
+            }
+
+            return true;
         }
 
         /// <summary>

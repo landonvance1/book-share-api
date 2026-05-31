@@ -1,6 +1,7 @@
 using BookSharingApp.Cli.Formatting;
 using BookSharingApp.Common;
 using BookSharingApp.Data;
+using BookSharingApp.Models;
 using BookSharingApp.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,6 +49,80 @@ public static class UserCommands
         TableFormatter.Print(headers, rows, "user");
     }
 
+    public static bool IsUserBanned(User user) => user.LockoutEnd == DateTimeOffset.MaxValue;
+
+    public static async Task WarnAsync(ApplicationDbContext db, string userId, string message)
+    {
+        var user = await db.Users.FindAsync(userId);
+        if (user is null)
+        {
+            Console.Error.WriteLine($"User '{userId}' not found.");
+            return;
+        }
+
+        if (IsUserBanned(user))
+        {
+            Console.Error.WriteLine($"User '{userId}' is banned and cannot receive warnings.");
+            return;
+        }
+
+        var name = $"{user.FirstName} {user.LastName}".Trim();
+        Console.WriteLine($"User:    {name} (id: {user.Id})");
+        Console.WriteLine($"Message: {message}");
+        Console.Write($"Send warning to {name}? [y/N]: ");
+
+        var response = Console.ReadLine();
+        if (response is null || response.Trim().ToLower() != "y")
+        {
+            Console.WriteLine("Aborted.");
+            return;
+        }
+
+        await CommitWarnAsync(db, user.Id, message, shareId: null);
+        Console.WriteLine($"Warning sent to '{name}'.");
+    }
+
+    /// <summary>
+    /// Creates an AdminWarning notification for the given user without saving or managing the transaction.
+    /// The caller owns the transaction and must call SaveChangesAsync.
+    /// Note: CreatedByUserId is set to the warned user's own ID because the CLI has no authenticated
+    /// admin identity. The mobile client should not display "created by" for AdminWarning notifications.
+    /// </summary>
+    public static void StageWarning(ApplicationDbContext db, string userId, string message, int? shareId)
+    {
+        db.Notifications.Add(new Notification
+        {
+            UserId = userId,
+            NotificationType = NotificationType.AdminWarning,
+            Message = message,
+            ShareId = shareId,
+            CreatedByUserId = userId,
+            CreatedAt = DateTime.UtcNow,
+            ReadAt = null
+        });
+    }
+
+    /// <summary>
+    /// Stages a warning and any additional work, then commits in a single transaction.
+    /// <paramref name="extraStaging"/> runs after StageWarning and before SaveChangesAsync.
+    /// </summary>
+    public static async Task CommitWarnAsync(ApplicationDbContext db, string userId, string message, int? shareId, Action? extraStaging = null)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        try
+        {
+            StageWarning(db, userId, message, shareId);
+            extraStaging?.Invoke();
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     public static async Task BanAsync(ApplicationDbContext db, string userId)
     {
         var user = await db.Users.FindAsync(userId);
@@ -57,7 +132,7 @@ public static class UserCommands
             return;
         }
 
-        if (user.LockoutEnd == DateTimeOffset.MaxValue)
+        if (IsUserBanned(user))
         {
             Console.Error.WriteLine($"User '{userId}' is already banned.");
             return;
@@ -95,7 +170,7 @@ public static class UserCommands
     /// Stages the ban (token revocation + PII scrub) without saving or managing the transaction.
     /// The caller owns the transaction and must call SaveChangesAsync.
     /// </summary>
-    public static async Task ApplyBanAsync(ApplicationDbContext db, BookSharingApp.Models.User user)
+    public static async Task ApplyBanAsync(ApplicationDbContext db, User user)
     {
         if (user.LockoutEnd == DateTimeOffset.MaxValue)
             throw new InvalidOperationException($"User '{user.Id}' is already banned.");

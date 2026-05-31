@@ -305,11 +305,12 @@ Stores reports submitted by share participants about inappropriate chat messages
 - Users cannot report their own messages
 
 ### Notification
-- **Types**: ShareStatusChanged, ShareDueDateChanged, ShareMessageReceived
+- **Types**: ShareStatusChanged, ShareDueDateChanged, ShareMessageReceived, UserBookWithdrawn, AdminWarning
 - Separate read tracking for share vs. chat notifications
 - Includes share details, message content, and actor information
 - Auto-created when share status changes or messages are sent
 - Persists even if share is archived
+- **AdminWarning** — sent by admins via CLI to warn a user about their behavior. Optionally scoped to a share. `CreatedByUserId` is a self-reference (the warned user's own ID) because the CLI has no authenticated admin identity. Mobile client should display this type as a blocking modal and should not show the "created by" field.
 
 ## API Endpoint Reference
 
@@ -352,6 +353,7 @@ Stores reports submitted by share participants about inappropriate chat messages
 
 ### Notifications (`/notifications`)
 - `GET /notifications` - Get all unread notifications
+- `PATCH /notifications/{id}/read` - Mark a single notification as read by ID (for AdminWarning dismissal)
 - `PATCH /notifications/shares/{shareId}/read` - Mark share notifications read
 - `PATCH /notifications/shares/{shareId}/chat/read` - Mark chat notifications read
 
