@@ -254,16 +254,32 @@ BookSharingWebAPI/
 
 ## Admin CLI
 
-A command-line tool for viewing and managing chat message reports. Admin access is gated by server/SSH access — no additional auth or API endpoints required.
+A command-line tool for viewing and managing chat message reports and users. Admin access is gated by server/SSH access — no additional auth or API endpoints required.
 
 ### Commands
 
+#### Reports
+
 | Command | Description |
 |---------|-------------|
-| `reports list` | List all reports (newest first) |
+| `reports list` | List unresolved reports (newest first) |
+| `reports list --all` | List all reports including resolved |
 | `reports list --user <name>` | Filter by reported user name |
 | `reports view <id>` | Full report detail with share context |
+| `reports resolve <id>` | Mark a report as resolved |
+| `reports unresolve <id>` | Mark a report as unresolved |
+| `reports ban <reportId>` | Ban the reported user and resolve the report |
+| `reports warn <reportId> --message <text>` | Warn the reported user and resolve the report |
 | `reports stats` | Total count, breakdown by category, top reported users |
+
+#### Users
+
+| Command | Description |
+|---------|-------------|
+| `users list` | List all users |
+| `users list --search <name>` | Filter users by name |
+| `users ban <id>` | Permanently ban a user |
+| `users warn <id> --message <text>` | Send a warning notification to a user |
 
 ### Usage (Docker)
 
@@ -278,9 +294,18 @@ BookSharing Admin CLI
 Type 'help' for available commands, 'exit' to quit.
 
 >> reports list
+>> reports list --all
 >> reports list --user "john"
 >> reports view 42
+>> reports resolve 42
+>> reports unresolve 42
+>> reports ban 42
+>> reports warn 42 --message "Please keep discussions civil."
 >> reports stats
+>> users list
+>> users list --search "john"
+>> users ban abc-123
+>> users warn abc-123 --message "This is a warning about your behavior."
 >> exit
 ```
 
