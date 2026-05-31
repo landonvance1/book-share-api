@@ -168,7 +168,7 @@ static void PrintHelp()
     Console.WriteLine("  reports ban <reportId>                Ban reported user and resolve report");
     Console.WriteLine("  reports warn <reportId> --message <> Warn reported user and resolve report");
     Console.WriteLine("  reports stats                         Show report statistics");
-    Console.WriteLine("  users list [--search <name>]          List users with banned status");
+    Console.WriteLine("  users list [--search <name>]          List all users");
     Console.WriteLine("  users ban <id>                        Permanently ban a user");
     Console.WriteLine("  users warn <id> --message <>          Send a warning to a user");
     Console.WriteLine("  help                                  Show this help message");
