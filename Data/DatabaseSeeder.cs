@@ -258,6 +258,30 @@ namespace BookSharingApp.Data
                     Borrower = "user-001",
                     ReturnDate = null,
                     Status = ShareStatus.Ready
+                },
+
+                // Reputation test data: Jane (user-003) borrowing from John (user-002)
+                // Two completed borrows and one disputed, so the reputation endpoint has
+                // meaningful data on a fresh database.
+                new Share
+                {
+                    UserBookId = 5,  // user-002's The Great Gatsby
+                    Borrower = "user-003",
+                    Status = ShareStatus.HomeSafe
+                },
+                new Share
+                {
+                    UserBookId = 6,  // user-002's Last Argument of Kings
+                    Borrower = "user-003",
+                    Status = ShareStatus.HomeSafe
+                },
+                new Share
+                {
+                    UserBookId = 7,  // user-002's Before They Are Hanged
+                    Borrower = "user-003",
+                    Status = ShareStatus.PickedUp,
+                    IsDisputed = true,
+                    DisputedBy = "user-002"
                 }
             };
 
