@@ -116,6 +116,7 @@ builder.Services.AddScoped<IShareService, ShareService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IUserBookService, UserBookService>();
 builder.Services.AddScoped<IUserDeletionService, UserDeletionService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IRateLimitService, RateLimitService>();
 builder.Services.AddSingleton<IRateLimiter>(provider =>
 {
@@ -226,6 +227,7 @@ app.MapUserBookEndpoints();
 app.MapShareEndpoints();
 app.MapChatEndpoints();
 app.MapNotificationEndpoints();
+app.MapUserEndpoints();
 app.MapLegalEndpoints();
 
 // Map SignalR hub
